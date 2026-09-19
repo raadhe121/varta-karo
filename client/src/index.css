@@ -1,0 +1,59 @@
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,500;0,600;0,700;1,500&family=Inter:wght@400;500;600;700&display=swap');
+@import 'tailwindcss';
+
+/*
+  "Parchment" theme, matching the VartaKaro product mockups: warm cream
+  page background, white/cream cards, one flat terracotta accent (no
+  gradients), a serif for editorial headings paired with Inter for UI.
+*/
+@theme {
+  --color-paper: #fffdf9;
+  --color-paper-soft: #f3ead9;
+  --color-page: #f2ecdf;
+  --color-paper-dark: #241d16;
+  --color-paper-dark-soft: #332a1f;
+  --color-ink: #2b241d;
+  --color-ink-soft: #8a7d6c;
+  --color-ink-dark: #f3ead9;
+  --color-ink-dark-soft: #b8ab95;
+  --color-accent: #c1652f;
+  --color-accent-soft: #f3decb;
+  --color-line: #e8dcc6;
+  --color-line-dark: #3a332a;
+
+  --font-display: 'Lora', 'Georgia', serif;
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+
+  --radius-bubble: 1.1rem;
+}
+
+@layer components {
+  .input {
+    @apply w-full rounded-xl border border-line bg-paper px-3.5 py-2.5 text-sm text-ink placeholder:text-ink-soft/70 outline-none transition-colors focus:border-accent;
+  }
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-page text-ink font-sans antialiased;
+  }
+
+  ::selection {
+    @apply bg-accent-soft text-ink;
+  }
+
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-line rounded-full;
+  }
+}

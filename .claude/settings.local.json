@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(brew services *)",
+      "Bash(mysql --version)",
+      "Bash(node *)"
+    ]
+  }
+}
