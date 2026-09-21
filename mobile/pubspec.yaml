@@ -52,6 +52,7 @@ dependencies:
   # https://github.com/Baseflow/flutter-permission-handler/issues/1561.
   # 12.0.3 resolves to permission_handler_android ^13.0.0, which predates it.
   permission_handler: 12.0.3
+  url_launcher: ^6.3.2
 
 dev_dependencies:
   flutter_test:
