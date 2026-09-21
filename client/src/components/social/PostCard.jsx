@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import Avatar from '../common/Avatar';
 import { toggleLike, fetchComments, addComment, deletePost } from '../../api/posts.api';
 import { useAuthStore } from '../../store/authStore';
+import { resolveMediaUrl } from '../../utils/media';
 
 function timeAgo(dateStr) {
   const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -73,9 +74,9 @@ export default function PostCard({ post, onDeleted }) {
       {post.content && !post.imageUrl && <p className="text-sm whitespace-pre-wrap px-3 pb-3">{post.content}</p>}
       {post.imageUrl &&
         (post.mediaType === 'video' ? (
-          <video src={post.imageUrl} controls className="w-full aspect-square object-cover bg-black" />
+          <video src={resolveMediaUrl(post.imageUrl)} controls className="w-full aspect-square object-cover bg-black" />
         ) : (
-          <img src={post.imageUrl} alt="" className="w-full aspect-square object-cover" />
+          <img src={resolveMediaUrl(post.imageUrl)} alt="" className="w-full aspect-square object-cover" />
         ))}
 
       <div className="flex items-center gap-4 px-2 pt-2">

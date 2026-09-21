@@ -1,4 +1,5 @@
 import { useAuthStore } from '../../store/authStore';
+import { resolveMediaUrl } from '../../utils/media';
 
 function statusSummary(statuses = []) {
   if (statuses.length === 0) return 'sent';
@@ -31,10 +32,10 @@ export default function MessageBubble({ message, showSender }) {
         {showSender && !isMine && <p className="text-xs font-semibold text-accent mb-0.5">{message.senderName}</p>}
 
         {message.type === 'image' && message.mediaUrl && (
-          <img src={message.mediaUrl} alt="attachment" className="rounded-xl mb-1 max-h-64 object-cover" />
+          <img src={resolveMediaUrl(message.mediaUrl)} alt="attachment" className="rounded-xl mb-1 max-h-64 object-cover" />
         )}
         {message.type === 'file' && message.mediaUrl && (
-          <a href={message.mediaUrl} target="_blank" rel="noreferrer" className="underline text-sm block mb-1">
+          <a href={resolveMediaUrl(message.mediaUrl)} target="_blank" rel="noreferrer" className="underline text-sm block mb-1">
             📎 {message.mediaMeta?.originalName || 'Attachment'}
           </a>
         )}

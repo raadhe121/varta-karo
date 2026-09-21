@@ -6,6 +6,7 @@ import { useChatStore } from '../../store/chatStore';
 import { useAuthStore } from '../../store/authStore';
 import { useCallStore } from '../../store/callStore';
 import { startCall } from '../../call/webrtc';
+import { resolveMediaUrl } from '../../utils/media';
 
 const EMPTY_MESSAGES = [];
 
@@ -126,7 +127,7 @@ export default function ContactDossier({ conversation }) {
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
               {sharedImages.slice(-9).map((m) => (
-                <img key={m.id} src={m.mediaUrl} alt="" className="aspect-square rounded-lg object-cover" />
+                <img key={m.id} src={resolveMediaUrl(m.mediaUrl)} alt="" className="aspect-square rounded-lg object-cover" />
               ))}
             </div>
           )}

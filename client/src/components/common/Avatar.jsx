@@ -1,3 +1,5 @@
+import { resolveMediaUrl } from '../../utils/media';
+
 function initials(name = '') {
   const parts = name.trim().split(/\s+/);
   if (parts.length === 0 || !parts[0]) return '?';
@@ -16,7 +18,7 @@ export default function Avatar({ user, size = 'md', showStatus = false, isOnline
   return (
     <div className="relative inline-block shrink-0">
       {user?.avatarUrl ? (
-        <img src={user.avatarUrl} alt={user?.name} className={`${sizeClass} rounded-full object-cover border border-line`} />
+        <img src={resolveMediaUrl(user.avatarUrl)} alt={user?.name} className={`${sizeClass} rounded-full object-cover border border-line`} />
       ) : (
         <div className={`${sizeClass} rounded-full flex items-center justify-center font-display font-semibold text-white bg-accent`}>
           {initials(user?.name)}

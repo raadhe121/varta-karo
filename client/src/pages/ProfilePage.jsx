@@ -10,6 +10,7 @@ import FriendButton from '../components/social/FriendButton';
 import FollowButton from '../components/social/FollowButton';
 import PostCard from '../components/social/PostCard';
 import ActivityLog from '../components/social/ActivityLog';
+import { resolveMediaUrl } from '../utils/media';
 
 export default function ProfilePage() {
   const { userId } = useParams();
@@ -56,7 +57,7 @@ export default function ProfilePage() {
 
       <div
         className="h-48 w-full bg-paper-soft"
-        style={profile.coverPhotoUrl ? { backgroundImage: `url(${profile.coverPhotoUrl})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
+        style={profile.coverPhotoUrl ? { backgroundImage: `url(${resolveMediaUrl(profile.coverPhotoUrl)})`, backgroundSize: 'cover', backgroundPosition: 'center' } : undefined}
       />
 
       <div className="max-w-5xl w-full mx-auto px-4 -mt-12">

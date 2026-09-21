@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { createStory } from '../../api/stories.api';
 import Button from '../common/Button';
+import { resolveMediaUrl } from '../../utils/media';
 
 export default function StoryComposerModal({ mediaUrl, mediaType, onClose, onCreated }) {
   const [caption, setCaption] = useState('');
@@ -21,9 +22,9 @@ export default function StoryComposerModal({ mediaUrl, mediaType, onClose, onCre
       <div className="w-full max-w-sm bg-paper rounded-2xl overflow-hidden">
         <div className="bg-black flex items-center justify-center">
           {mediaType === 'video' ? (
-            <video src={mediaUrl} controls className="w-full max-h-[60vh] object-contain" />
+            <video src={resolveMediaUrl(mediaUrl)} controls className="w-full max-h-[60vh] object-contain" />
           ) : (
-            <img src={mediaUrl} alt="" className="w-full max-h-[60vh] object-contain" />
+            <img src={resolveMediaUrl(mediaUrl)} alt="" className="w-full max-h-[60vh] object-contain" />
           )}
         </div>
         <div className="p-4 space-y-3">

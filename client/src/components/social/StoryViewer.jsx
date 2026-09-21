@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Avatar from '../common/Avatar';
 import { viewStory, deleteStory, fetchStoryViewers } from '../../api/stories.api';
+import { resolveMediaUrl } from '../../utils/media';
 
 const IMAGE_DURATION = 5000;
 
@@ -141,7 +142,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
           <video
             key={story.id}
             ref={videoRef}
-            src={story.mediaUrl}
+            src={resolveMediaUrl(story.mediaUrl)}
             autoPlay
             playsInline
             className="w-full h-full object-contain bg-black"
@@ -149,7 +150,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
             onEnded={goNext}
           />
         ) : (
-          <img key={story.id} src={story.mediaUrl} alt="" className="w-full h-full object-contain bg-black" />
+          <img key={story.id} src={resolveMediaUrl(story.mediaUrl)} alt="" className="w-full h-full object-contain bg-black" />
         )}
 
         {story.caption && (
