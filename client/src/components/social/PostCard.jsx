@@ -66,7 +66,7 @@ export default function PostCard({ post, onDeleted }) {
         </Link>
         {post.author.id === myId && (
           <button onClick={handleDelete} title="Delete post" className="text-ink-soft hover:text-red-600 px-1 leading-none text-lg font-bold tracking-widest">
-            &vellip;
+            ⋮
           </button>
         )}
       </div>

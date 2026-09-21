@@ -54,7 +54,7 @@ export default function RandomChatWidget() {
           </div>
         </div>
         <button onClick={hide} title="Minimize" className="text-ink-soft hover:text-ink shrink-0 text-lg leading-none px-1">
-          &minus;
+          −
         </button>
       </div>
 
