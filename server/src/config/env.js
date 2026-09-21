@@ -21,10 +21,11 @@ export const env = {
     .map((o) => o.trim()),
   db: {
     host: required('DB_HOST', '127.0.0.1'),
-    port: Number(process.env.DB_PORT || 3306),
+    port: Number(process.env.DB_PORT || 5432),
     name: required('DB_NAME', 'vartakaro'),
-    user: required('DB_USER', 'root'),
+    user: required('DB_USER', 'postgres'),
     password: process.env.DB_PASSWORD || '',
+    ssl: process.env.DB_SSL === 'true',
   },
   jwt: {
     accessSecret: required('JWT_ACCESS_SECRET', 'dev-access-secret'),
