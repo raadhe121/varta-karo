@@ -1,6 +1,8 @@
 import { io } from 'socket.io-client';
 import { useRandomChatStore } from '../store/randomChatStore';
 
+const apiOrigin = import.meta.env.VITE_API_URL ?? '';
+
 // A singleton, deliberately independent of any component's mount lifecycle —
 // the random-chat session (and its socket) must keep running while the
 // widget is minimized, so Sidebar can show a live "Anonymous" entry and
@@ -16,7 +18,7 @@ export function startRandomChat(accessToken) {
 
   store.startSession();
 
-  socket = io('/random', { auth: { token: accessToken }, transports: ['websocket'] });
+  socket = io(`${apiOrigin}/random`, { auth: { token: accessToken }, transports: ['websocket'] });
 
   socket.on('connect', () => socket.emit('random:join'));
   socket.on('random:waiting', () => useRandomChatStore.getState().setWaiting());

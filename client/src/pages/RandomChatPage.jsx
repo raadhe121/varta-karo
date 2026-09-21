@@ -6,6 +6,8 @@ import { login as loginApi } from '../api/auth.api';
 import Avatar from '../components/common/Avatar';
 import Button from '../components/common/Button';
 
+const apiOrigin = import.meta.env.VITE_API_URL ?? '';
+
 function getGuestId() {
   let id = localStorage.getItem('vartakaro.guestId');
   if (!id) {
@@ -85,7 +87,7 @@ export default function RandomChatPage() {
   const [connectedNotice, setConnectedNotice] = useState(null);
 
   useEffect(() => {
-    const socket = io('/random', {
+    const socket = io(`${apiOrigin}/random`, {
       auth: accessToken ? { token: accessToken } : { guestId: getGuestId(), guestName: user?.name },
       transports: ['websocket'],
     });
