@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
@@ -7,6 +7,7 @@ import { useSocket } from '../../hooks/useSocket';
 import Avatar from '../common/Avatar';
 import IncomingCallModal from '../call/IncomingCallModal';
 import ActiveCallOverlay from '../call/ActiveCallOverlay';
+import CreatePostModal from '../social/CreatePostModal';
 
 function BrandMark() {
   return (
@@ -50,6 +51,7 @@ export default function AppNav() {
   const navigate = useNavigate();
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   useEffect(() => {
     fetchUnreadCount().then(({ count }) => setUnreadCount(count));
@@ -59,6 +61,7 @@ export default function AppNav() {
     <>
       <IncomingCallModal />
       <ActiveCallOverlay />
+      {composerOpen && <CreatePostModal onClose={() => setComposerOpen(false)} />}
       <nav className="flex items-center gap-4 px-4 py-2.5 border-b border-line bg-paper">
         <div className="flex items-center gap-2.5 shrink-0">
           <BrandMark />
@@ -116,6 +119,16 @@ export default function AppNav() {
               />
             </svg>
           </NavIcon>
+          <button
+            onClick={() => setComposerOpen(true)}
+            title="Create post"
+            className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-soft hover:bg-paper-soft transition-colors"
+          >
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="3" width="18" height="18" rx="4" />
+              <path strokeLinecap="round" d="M12 8v8M8 12h8" />
+            </svg>
+          </button>
           <NavIcon to="/notifications" title="Notifications" badge={unreadCount}>
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path

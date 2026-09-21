@@ -33,6 +33,14 @@ export default function ReelsPage() {
   }, []);
 
   useEffect(() => {
+    const onCreated = (e) => {
+      if (e.detail.mediaType === 'video') setReels((prev) => [e.detail, ...prev]);
+    };
+    window.addEventListener('post:created', onCreated);
+    return () => window.removeEventListener('post:created', onCreated);
+  }, []);
+
+  useEffect(() => {
     const container = containerRef.current;
     if (!container) return undefined;
 

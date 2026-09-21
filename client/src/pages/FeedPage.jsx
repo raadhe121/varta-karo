@@ -18,6 +18,12 @@ export default function FeedPage() {
     });
   }, []);
 
+  useEffect(() => {
+    const onCreated = (e) => setPosts((prev) => (prev ? [e.detail, ...prev] : prev));
+    window.addEventListener('post:created', onCreated);
+    return () => window.removeEventListener('post:created', onCreated);
+  }, []);
+
   const loadMore = async () => {
     if (!posts || posts.length === 0) return;
     setLoadingMore(true);
