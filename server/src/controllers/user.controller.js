@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
 import { User, FriendRequest, Follow, Post, Like, Comment } from '../models/index.js';
-import { canView, isFriend } from '../services/visibility.service.js';
+import { canView, isFriend, getFriendIds } from '../services/visibility.service.js';
 
 function publicUser(user) {
   const { id, name, username, email, phone, avatarUrl, avatarColor, bio, status, lastSeenAt } = user;
@@ -73,6 +73,72 @@ export async function searchUsers(req, res) {
   });
 
   return res.json(users.map(publicUser));
+}
+
+export async function getSuggestions(req, res) {
+  const limit = Math.min(Number(req.query.limit) || 8, 20);
+
+  const [myFriendIds, followingRows] = await Promise.all([
+    getFriendIds(req.userId),
+    Follow.findAll({ where: { followerId: req.userId } }),
+  ]);
+  const myFriendIdSet = new Set(myFriendIds);
+  const excludeIds = [req.userId, ...followingRows.map((f) => f.followingId)];
+
+  const candidates = await User.findAll({
+    where: { id: { [Op.notIn]: excludeIds } },
+    order: [['createdAt', 'DESC']],
+    limit: 50,
+  });
+  if (candidates.length === 0) return res.json([]);
+
+  const candidateIdSet = new Set(candidates.map((c) => c.id));
+  const friendRows = await FriendRequest.findAll({
+    where: {
+      status: 'accepted',
+      [Op.or]: [
+        { requesterId: { [Op.in]: [...candidateIdSet] } },
+        { addresseeId: { [Op.in]: [...candidateIdSet] } },
+      ],
+    },
+  });
+
+  // candidateId -> set of that candidate's friend ids, so we can rank
+  // suggestions by how many friends they have in common with the viewer.
+  const friendsOf = new Map();
+  for (const row of friendRows) {
+    if (candidateIdSet.has(row.requesterId)) {
+      if (!friendsOf.has(row.requesterId)) friendsOf.set(row.requesterId, new Set());
+      friendsOf.get(row.requesterId).add(row.addresseeId);
+    }
+    if (candidateIdSet.has(row.addresseeId)) {
+      if (!friendsOf.has(row.addresseeId)) friendsOf.set(row.addresseeId, new Set());
+      friendsOf.get(row.addresseeId).add(row.requesterId);
+    }
+  }
+
+  const ranked = candidates
+    .map((user) => {
+      const theirFriends = friendsOf.get(user.id) || new Set();
+      let mutualCount = 0;
+      for (const friendId of theirFriends) {
+        if (myFriendIdSet.has(friendId)) mutualCount += 1;
+      }
+      return { user, mutualCount };
+    })
+    .sort((a, b) => b.mutualCount - a.mutualCount)
+    .slice(0, limit);
+
+  return res.json(
+    ranked.map(({ user, mutualCount }) => ({
+      ...publicUser(user),
+      mutualCount,
+      note:
+        mutualCount > 0
+          ? `Friends with ${mutualCount} ${mutualCount === 1 ? 'person' : 'people'} you know`
+          : 'New to VartaKaro',
+    }))
+  );
 }
 
 export async function getProfile(req, res) {

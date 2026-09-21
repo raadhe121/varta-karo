@@ -10,6 +10,7 @@ router.get('/me', userController.getMe);
 router.patch('/me', userController.updateMe);
 router.get('/me/activity', userController.getMyActivity);
 router.get('/search', userController.searchUsers);
+router.get('/suggestions', userController.getSuggestions);
 router.get('/:id/profile', userController.getProfile);
 router.get('/:id/posts', getUserPosts);
 

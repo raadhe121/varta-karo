@@ -1,6 +1,7 @@
 import { http } from './http';
 
 export const fetchProfile = (userId) => http.get(`/users/${userId}/profile`).then((r) => r.data);
+export const fetchSuggestions = () => http.get('/users/suggestions').then((r) => r.data);
 export const fetchMyActivity = () => http.get('/users/me/activity').then((r) => r.data);
 
 export const sendFriendRequest = (userId) => http.post(`/friends/request/${userId}`).then((r) => r.data);
