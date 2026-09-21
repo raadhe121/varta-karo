@@ -91,7 +91,7 @@ export default function ActiveCallOverlay() {
   const showRemoteVideo = isVideo && remoteStream;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-ink flex flex-col items-center justify-center text-white">
+    <div className="fixed inset-0 z-[60] bg-paper-dark flex flex-col items-center justify-center text-white">
       {showRemoteVideo ? (
         <video ref={setRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-contain bg-black" />
       ) : (

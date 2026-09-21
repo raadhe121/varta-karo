@@ -10,7 +10,7 @@ export default function IncomingCallModal() {
   if (phase !== 'incoming') return null;
 
   return (
-    <div className="fixed inset-0 z-[60] bg-ink/95 flex flex-col items-center justify-center text-white gap-6">
+    <div className="fixed inset-0 z-[60] bg-paper-dark/95 flex flex-col items-center justify-center text-white gap-6">
       <Avatar user={remoteUser} size="lg" />
       <div className="text-center">
         <p className="text-xl font-semibold">{remoteUser?.name}</p>

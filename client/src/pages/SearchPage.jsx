@@ -98,7 +98,7 @@ export default function SearchPage() {
               <button
                 key={p.id}
                 onClick={() => navigate('/feed')}
-                className="relative aspect-square bg-ink overflow-hidden"
+                className="relative aspect-square bg-paper-dark overflow-hidden"
               >
                 {p.mediaType === 'video' ? (
                   <span className="absolute inset-0 flex items-center justify-center text-white/70">

@@ -2,7 +2,7 @@ export default function Modal({ open, onClose, title, children }) {
   if (!open) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-ink/40 p-4" onClick={onClose}>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-paper-dark/40 p-4" onClick={onClose}>
       <div
         className="w-full max-w-md rounded-3xl bg-paper shadow-2xl shadow-ink/10 p-6"
         onClick={(e) => e.stopPropagation()}

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { useNotificationStore } from '../../store/notificationStore';
+import { useThemeStore } from '../../store/themeStore';
 import { fetchUnreadCount } from '../../api/notifications.api';
 import { useSocket } from '../../hooks/useSocket';
 import Avatar from '../common/Avatar';
@@ -52,6 +53,8 @@ export default function AppNav() {
   const unreadCount = useNotificationStore((s) => s.unreadCount);
   const setUnreadCount = useNotificationStore((s) => s.setUnreadCount);
   const [composerOpen, setComposerOpen] = useState(false);
+  const theme = useThemeStore((s) => s.theme);
+  const toggleTheme = useThemeStore((s) => s.toggleTheme);
 
   useEffect(() => {
     fetchUnreadCount().then(({ count }) => setUnreadCount(count));
@@ -119,6 +122,25 @@ export default function AppNav() {
               />
             </svg>
           </NavIcon>
+          <button
+            onClick={toggleTheme}
+            title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
+            className="h-9 w-9 rounded-lg flex items-center justify-center text-ink-soft hover:bg-paper-soft transition-colors"
+          >
+            {theme === 'dark' ? (
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <circle cx="12" cy="12" r="4.5" />
+                <path
+                  strokeLinecap="round"
+                  d="M12 2.5v2M12 19.5v2M4.2 4.2l1.4 1.4M18.4 18.4l1.4 1.4M2.5 12h2M19.5 12h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"
+                />
+              </svg>
+            ) : (
+              <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M20 14.5A8.5 8.5 0 1 1 9.5 4a7 7 0 0 0 10.5 10.5Z" />
+              </svg>
+            )}
+          </button>
           <button
             onClick={() => setComposerOpen(true)}
             title="Create post"

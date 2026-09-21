@@ -65,7 +65,7 @@ export default function PostComposer({ onCreated }) {
               setImageUrl(null);
               setMediaType(null);
             }}
-            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-ink/70 text-paper text-sm"
+            className="absolute top-1 right-1 h-6 w-6 rounded-full bg-paper-dark/70 text-paper text-sm"
           >
             &times;
           </button>

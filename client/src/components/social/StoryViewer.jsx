@@ -108,7 +108,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
 
   return (
     <div className="fixed inset-0 z-50 bg-black flex items-center justify-center">
-      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-ink">
+      <div className="relative w-full max-w-sm h-full sm:h-[90vh] sm:rounded-2xl overflow-hidden bg-paper-dark">
         <div className="absolute top-2 left-2 right-2 z-20 flex gap-1">
           {group.stories.map((s, i) => (
             <div key={s.id} className="h-0.5 flex-1 bg-white/30 rounded-full overflow-hidden">
@@ -169,7 +169,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
         )}
 
         {showViewers && (
-          <div className="absolute bottom-0 left-0 right-0 max-h-64 overflow-y-auto bg-ink/95 rounded-t-2xl p-4 z-30">
+          <div className="absolute bottom-0 left-0 right-0 max-h-64 overflow-y-auto bg-paper-dark/95 rounded-t-2xl p-4 z-30">
             <p className="text-white text-xs uppercase tracking-wide mb-2">Viewers</p>
             {viewers === null ? (
               <p className="text-white/60 text-sm">Loading...</p>

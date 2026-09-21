@@ -10,21 +10,37 @@
   --color-paper: #fffdf9;
   --color-paper-soft: #f3ead9;
   --color-page: #f2ecdf;
+  /* Fixed, theme-independent near-black -- used for always-dark surfaces
+     (video/call overlays) that must look the same in light and dark mode,
+     so it's kept separate from --color-ink, which inverts below. */
   --color-paper-dark: #241d16;
   --color-paper-dark-soft: #332a1f;
   --color-ink: #2b241d;
   --color-ink-soft: #8a7d6c;
-  --color-ink-dark: #f3ead9;
-  --color-ink-dark-soft: #b8ab95;
   --color-accent: #c1652f;
   --color-accent-soft: #f3decb;
   --color-line: #e8dcc6;
-  --color-line-dark: #3a332a;
 
   --font-display: 'Lora', 'Georgia', serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
 
   --radius-bubble: 1.1rem;
+}
+
+/* Dark theme: overrides the same custom properties the utilities above
+   already compile to (bg-paper, text-ink, border-line, ...), so every
+   existing usage of those classes flips automatically -- no per-component
+   dark: variants needed. --color-paper-dark(-soft) above is intentionally
+   NOT touched here; it's the fixed color those always-dark overlays use. */
+:root.dark {
+  --color-paper: #241d16;
+  --color-paper-soft: #332a1f;
+  --color-page: #1c1712;
+  --color-ink: #f3ead9;
+  --color-ink-soft: #b8ab95;
+  --color-accent: #d97b46;
+  --color-accent-soft: #4a3323;
+  --color-line: #3a332a;
 }
 
 @layer components {
@@ -40,8 +56,16 @@
     height: 100%;
   }
 
+  html {
+    color-scheme: light;
+  }
+
+  html.dark {
+    color-scheme: dark;
+  }
+
   body {
-    @apply bg-page text-ink font-sans antialiased;
+    @apply bg-page text-ink font-sans antialiased transition-colors duration-200;
   }
 
   ::selection {

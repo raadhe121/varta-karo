@@ -123,7 +123,7 @@ export default function ReelItem({ reel, isActive, muted, onToggleMute, onOpenCo
   const shownCaption = expanded || !isLong ? caption : `${caption.slice(0, 80)}...`;
 
   return (
-    <div className="relative h-full w-full flex items-center justify-center snap-start shrink-0 bg-ink">
+    <div className="relative h-full w-full flex items-center justify-center snap-start shrink-0 bg-paper-dark">
       <video
         ref={videoRef}
         src={resolveMediaUrl(reel.imageUrl)}

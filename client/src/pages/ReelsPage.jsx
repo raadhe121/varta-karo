@@ -76,7 +76,7 @@ export default function ReelsPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-ink overflow-hidden">
+    <div className="h-screen flex flex-col bg-paper-dark overflow-hidden">
       <AppNav />
 
       <div className="relative flex-1 overflow-hidden">
