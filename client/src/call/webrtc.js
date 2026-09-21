@@ -56,15 +56,31 @@ function createPeerConnection(toUserId) {
 
   connection.onicecandidate = (event) => {
     if (event.candidate) {
+      console.log('[call] local ICE candidate:', event.candidate.type, event.candidate.protocol);
       socket()?.emit('call:ice-candidate', { toUserId, candidate: event.candidate });
+    } else {
+      console.log('[call] ICE gathering complete');
     }
   };
 
   connection.ontrack = (event) => {
+    console.log(
+      '[call] ontrack fired:',
+      event.track.kind,
+      'streams:',
+      event.streams.length,
+      'stream tracks:',
+      event.streams[0]?.getTracks().map((t) => `${t.kind}:${t.readyState}:enabled=${t.enabled}`)
+    );
     useCallStore.getState().setState({ remoteStream: event.streams[0] });
   };
 
+  connection.oniceconnectionstatechange = () => {
+    console.log('[call] iceConnectionState:', connection.iceConnectionState);
+  };
+
   connection.onconnectionstatechange = () => {
+    console.log('[call] connectionState:', connection.connectionState);
     if (['failed', 'closed'].includes(connection.connectionState) && useCallStore.getState().phase === 'connected') {
       endCall();
     }
@@ -74,7 +90,12 @@ function createPeerConnection(toUserId) {
 }
 
 async function getLocalMedia(callType) {
-  return navigator.mediaDevices.getUserMedia({ audio: true, video: callType === 'video' });
+  const stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: callType === 'video' });
+  console.log(
+    '[call] local media acquired:',
+    stream.getTracks().map((t) => `${t.kind}:${t.readyState}:enabled=${t.enabled}:muted=${t.muted}`)
+  );
+  return stream;
 }
 
 function finalizeAndLog(status) {
