@@ -37,12 +37,14 @@ export default function ActiveCallOverlay() {
 
   const localVideoRef = useRef(null);
   const remoteVideoRef = useRef(null);
+  const remoteAudioRef = useRef(null);
 
   useEffect(() => {
     if (localVideoRef.current) localVideoRef.current.srcObject = localStream || null;
   }, [localStream]);
   useEffect(() => {
     if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream || null;
+    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream || null;
   }, [remoteStream]);
 
   if (phase !== 'outgoing' && phase !== 'connected') return null;
@@ -57,6 +59,7 @@ export default function ActiveCallOverlay() {
         <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="flex flex-col items-center gap-3">
+          <audio ref={remoteAudioRef} autoPlay />
           <Avatar user={remoteUser} size="lg" />
         </div>
       )}
