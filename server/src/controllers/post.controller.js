@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Post, Like, Comment, User, Follow } from '../models/index.js';
+import { Post, Like, Save, Share, Comment, User, Follow } from '../models/index.js';
 import { isFriend, canView, getFriendIds } from '../services/visibility.service.js';
 import { createNotification } from '../services/notification.service.js';
 
@@ -8,12 +8,21 @@ function publicUser(user) {
   return { id, name, username, avatarUrl, avatarColor };
 }
 
-async function serializePost(post, viewerId) {
-  const [likeCount, viewerLike, commentCount] = await Promise.all([
+// `followingIds` lets callers batch-resolve "do I follow this author" for a
+// whole page of posts with a single Follow query instead of one per post.
+async function serializePost(post, viewerId, followingIds = null) {
+  const [likeCount, viewerLike, commentCount, saveCount, viewerSave, shareCount] = await Promise.all([
     Like.count({ where: { postId: post.id } }),
     Like.findOne({ where: { postId: post.id, userId: viewerId } }),
     Comment.count({ where: { postId: post.id } }),
+    Save.count({ where: { postId: post.id } }),
+    Save.findOne({ where: { postId: post.id, userId: viewerId } }),
+    Share.count({ where: { postId: post.id } }),
   ]);
+
+  const followedByMe = followingIds
+    ? followingIds.has(post.authorId)
+    : Boolean(await Follow.findOne({ where: { followerId: viewerId, followingId: post.authorId } }));
 
   return {
     id: post.id,
@@ -25,6 +34,10 @@ async function serializePost(post, viewerId) {
     likeCount,
     likedByMe: Boolean(viewerLike),
     commentCount,
+    saveCount,
+    savedByMe: Boolean(viewerSave),
+    shareCount,
+    followedByMe: post.authorId === viewerId ? undefined : followedByMe,
     createdAt: post.createdAt,
   };
 }
@@ -58,7 +71,33 @@ export async function getFeed(req, res) {
     limit: Number(limit),
   });
 
-  return res.json(await Promise.all(posts.map((p) => serializePost(p, req.userId))));
+  const followingIdSet = new Set(followingIds);
+  return res.json(await Promise.all(posts.map((p) => serializePost(p, req.userId, followingIdSet))));
+}
+
+export async function getReels(req, res) {
+  const { before, limit = 10 } = req.query;
+
+  const where = {
+    mediaType: 'video',
+    [Op.or]: [{ authorId: req.userId }, { visibility: 'public' }],
+  };
+  if (before) {
+    where.createdAt = { [Op.lt]: new Date(before) };
+  }
+
+  const [posts, followingRows] = await Promise.all([
+    Post.findAll({
+      where,
+      include: [{ model: User, as: 'author' }],
+      order: [['createdAt', 'DESC']],
+      limit: Number(limit),
+    }),
+    Follow.findAll({ where: { followerId: req.userId } }),
+  ]);
+  const followingIdSet = new Set(followingRows.map((f) => f.followingId));
+
+  return res.json(await Promise.all(posts.map((p) => serializePost(p, req.userId, followingIdSet))));
 }
 
 export async function getUserPosts(req, res) {
@@ -136,6 +175,36 @@ export async function toggleLike(req, res) {
 
   const likeCount = await Like.count({ where: { postId: post.id } });
   return res.json({ liked: !existing, likeCount });
+}
+
+export async function toggleSave(req, res) {
+  const post = await Post.findByPk(req.params.id);
+  if (!post) return res.status(404).json({ message: 'Post not found' });
+  if (!(await canView(post.visibility, req.userId, post.authorId))) {
+    return res.status(403).json({ message: 'Not allowed to view this post' });
+  }
+
+  const existing = await Save.findOne({ where: { postId: post.id, userId: req.userId } });
+  if (existing) {
+    await existing.destroy();
+  } else {
+    await Save.create({ postId: post.id, userId: req.userId });
+  }
+
+  const saveCount = await Save.count({ where: { postId: post.id } });
+  return res.json({ saved: !existing, saveCount });
+}
+
+export async function sharePost(req, res) {
+  const post = await Post.findByPk(req.params.id);
+  if (!post) return res.status(404).json({ message: 'Post not found' });
+  if (!(await canView(post.visibility, req.userId, post.authorId))) {
+    return res.status(403).json({ message: 'Not allowed to view this post' });
+  }
+
+  await Share.create({ postId: post.id, userId: req.userId });
+  const shareCount = await Share.count({ where: { postId: post.id } });
+  return res.json({ shareCount });
 }
 
 export async function listComments(req, res) {

@@ -10,6 +10,8 @@ import { FriendRequest } from './FriendRequest.js';
 import { Follow } from './Follow.js';
 import { Post } from './Post.js';
 import { Like } from './Like.js';
+import { Save } from './Save.js';
+import { Share } from './Share.js';
 import { Comment } from './Comment.js';
 import { Notification } from './Notification.js';
 import { Story } from './Story.js';
@@ -67,6 +69,14 @@ Post.hasMany(Comment, { foreignKey: 'postId', as: 'comments' });
 Comment.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
 Comment.belongsTo(User, { foreignKey: 'authorId', as: 'author' });
 
+Post.hasMany(Save, { foreignKey: 'postId', as: 'saves' });
+Save.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
+Save.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Post.hasMany(Share, { foreignKey: 'postId', as: 'shares' });
+Share.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
+Share.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 // Notifications
 Notification.belongsTo(User, { foreignKey: 'recipientId', as: 'recipient' });
 Notification.belongsTo(User, { foreignKey: 'actorId', as: 'actor' });
@@ -98,6 +108,8 @@ export {
   Follow,
   Post,
   Like,
+  Save,
+  Share,
   Comment,
   Notification,
   Story,

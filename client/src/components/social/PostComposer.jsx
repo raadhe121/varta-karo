@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { createPost } from '../../api/posts.api';
 import { uploadMedia } from '../../api/chat.api';
 import Button from '../common/Button';
+import { resolveMediaUrl } from '../../utils/media';
 
 export default function PostComposer({ onCreated }) {
   const [content, setContent] = useState('');
@@ -54,9 +55,9 @@ export default function PostComposer({ onCreated }) {
       {imageUrl && (
         <div className="relative inline-block">
           {mediaType === 'video' ? (
-            <video src={imageUrl} controls className="max-h-48 rounded-xl" />
+            <video src={resolveMediaUrl(imageUrl)} controls className="max-h-48 rounded-xl" />
           ) : (
-            <img src={imageUrl} alt="attachment" className="max-h-48 rounded-xl" />
+            <img src={resolveMediaUrl(imageUrl)} alt="attachment" className="max-h-48 rounded-xl" />
           )}
           <button
             type="button"

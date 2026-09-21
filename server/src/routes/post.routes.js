@@ -6,9 +6,12 @@ const router = Router();
 
 router.use(requireAuth);
 router.get('/feed', postController.getFeed);
+router.get('/reels', postController.getReels);
 router.post('/', postController.createPost);
 router.delete('/:id', postController.deletePost);
 router.post('/:id/like', postController.toggleLike);
+router.post('/:id/save', postController.toggleSave);
+router.post('/:id/share', postController.sharePost);
 router.get('/:id/comments', postController.listComments);
 router.post('/:id/comments', postController.addComment);
 

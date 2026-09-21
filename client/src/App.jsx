@@ -14,6 +14,7 @@ import GuidelinesPage from './pages/GuidelinesPage';
 import RandomChatPage from './pages/RandomChatPage';
 import SettingsPage from './pages/SettingsPage';
 import SearchPage from './pages/SearchPage';
+import ReelsPage from './pages/ReelsPage';
 
 function ProtectedRoute({ children }) {
   const user = useAuthStore((s) => s.user);
@@ -81,6 +82,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <FeedPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/reels"
+          element={
+            <ProtectedRoute>
+              <ReelsPage />
             </ProtectedRoute>
           }
         />

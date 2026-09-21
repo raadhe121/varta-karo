@@ -85,6 +85,13 @@ export default function AppNav() {
               <rect x="13" y="13" width="7" height="7" rx="1.5" />
             </svg>
           </NavIcon>
+          <NavIcon to="/reels" title="Reels">
+            <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="3" y="4" width="18" height="16" rx="3" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m10 9 5 3-5 3V9Z" fill="currentColor" stroke="none" />
+              <path strokeLinecap="round" d="M7 4 4.5 8M13.5 4 11 8M20 4l-2.5 4" />
+            </svg>
+          </NavIcon>
           <NavIcon to="/random-chat" title="Talk to a stranger">
             <svg width="21" height="21" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M17 3 21 7l-4 4M21 7H9a4 4 0 0 0-4 4v1" />
