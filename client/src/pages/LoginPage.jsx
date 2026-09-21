@@ -301,6 +301,14 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
+
+          <Link
+            to="/random-chat"
+            className="mt-4 block rounded-2xl bg-paper p-4 shadow-sm shadow-ink/5 hover:shadow-md transition-shadow text-center"
+          >
+            <p className="font-semibold text-sm text-accent">Talk to a stranger</p>
+            <p className="text-xs text-ink-soft mt-0.5">No account needed — just say hi and see who you get.</p>
+          </Link>
         </div>
       </div>
     </div>

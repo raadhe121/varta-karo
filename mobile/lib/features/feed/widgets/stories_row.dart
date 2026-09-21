@@ -89,12 +89,27 @@ class _StoryAvatar extends StatelessWidget {
               clipBehavior: Clip.none,
               children: [
                 Container(
-                  padding: const EdgeInsets.all(2),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    border: Border.all(color: ringed ? (allSeen ? AppColors.line : AppColors.accent) : Colors.transparent, width: 2),
-                  ),
-                  child: Avatar(user: avatarUser, size: AvatarSize.md),
+                  padding: EdgeInsets.all(ringed ? 2.5 : 0),
+                  decoration: !ringed
+                      ? null
+                      : BoxDecoration(
+                          shape: BoxShape.circle,
+                          gradient: allSeen
+                              ? null
+                              : const LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [Color(0xFFF6A93B), Color(0xFFC1652F)],
+                                ),
+                          border: allSeen ? Border.all(color: AppColors.line, width: 2) : null,
+                        ),
+                  child: !ringed
+                      ? Avatar(user: avatarUser, size: AvatarSize.md)
+                      : Container(
+                          padding: const EdgeInsets.all(2),
+                          decoration: const BoxDecoration(shape: BoxShape.circle, color: AppColors.page),
+                          child: Avatar(user: avatarUser, size: AvatarSize.md),
+                        ),
                 ),
                 if (showAddBadge)
                   Positioned(

@@ -53,6 +53,12 @@ class AuthActions {
     await _applyAuth(data);
   }
 
+  /// Applies an already-fetched `{user, accessToken, refreshToken}` login
+  /// response (e.g. from random_chat's inline "log in to accept" form,
+  /// which needs the REST call's result before deciding what to do next)
+  /// without re-issuing the REST call itself.
+  Future<void> applyExternalAuth(Map<String, dynamic> data) => _applyAuth(data);
+
   Future<void> requestOtp(String phone) => _ref.read(authApiProvider).requestOtp(phone);
 
   Future<void> verifyOtp({required String phone, required String code}) async {

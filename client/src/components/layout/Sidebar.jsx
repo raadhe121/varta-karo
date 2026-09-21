@@ -10,6 +10,8 @@ import ContactsList from '../contacts/ContactsList';
 import NewGroupModal from '../chat/NewGroupModal';
 import { useAuthStore } from '../../store/authStore';
 import { useChatStore } from '../../store/chatStore';
+import { useRandomChatStore } from '../../store/randomChatStore';
+import { startRandomChat } from '../../random/randomChatClient';
 import { createConversation } from '../../api/chat.api';
 
 const FILTERS = [
@@ -21,8 +23,14 @@ const FILTERS = [
 
 export default function Sidebar({ onSelectConversation }) {
   const user = useAuthStore((s) => s.user);
+  const accessToken = useAuthStore((s) => s.accessToken);
   const upsertConversation = useChatStore((s) => s.upsertConversation);
   const conversations = useChatStore((s) => s.conversations);
+  const randomSessionActive = useRandomChatStore((s) => s.sessionActive);
+  const randomPhase = useRandomChatStore((s) => s.phase);
+  const randomPartner = useRandomChatStore((s) => s.partner);
+  const randomMessages = useRandomChatStore((s) => s.messages);
+  const showRandomChat = useRandomChatStore((s) => s.show);
   const [tab, setTab] = useState('chats');
   const [filter, setFilter] = useState('all');
   const [groupModalOpen, setGroupModalOpen] = useState(false);
@@ -66,6 +74,32 @@ export default function Sidebar({ onSelectConversation }) {
 
       {tab === 'chats' && (
         <div className="px-3 pt-3">
+          <button
+            onClick={() => (randomSessionActive ? showRandomChat() : startRandomChat(accessToken))}
+            className="w-full mb-3 py-2 rounded-lg border border-accent text-accent text-sm font-semibold hover:bg-accent-soft transition-colors"
+          >
+            New Random Chat
+          </button>
+
+          {randomSessionActive && (
+            <button
+              onClick={showRandomChat}
+              className="w-full flex items-center gap-3 px-2 py-2 mb-3 rounded-xl hover:bg-paper-soft text-left"
+            >
+              <Avatar user={{ name: randomPartner?.isGuest ? randomPartner.name : 'Stranger' }} size="sm" />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium truncate">Anonymous</p>
+                <p className="text-xs text-ink-soft truncate">
+                  {randomPhase === 'waiting'
+                    ? 'Finding someone...'
+                    : randomMessages.length > 0
+                      ? randomMessages[randomMessages.length - 1].text
+                      : 'Say hello 👋'}
+                </p>
+              </div>
+            </button>
+          )}
+
           <div className="flex items-center justify-between mb-2">
             <p className="font-display font-semibold">Conversations</p>
             {unreadCount > 0 && (

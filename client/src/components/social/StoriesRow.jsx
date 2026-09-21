@@ -55,8 +55,20 @@ export default function StoriesRow() {
         className="flex flex-col items-center gap-1.5 shrink-0 w-16"
       >
         <div className="relative">
-          <div className={myGroup ? 'p-[2px] rounded-full border-2 border-accent' : ''}>
-            <Avatar user={user} size="md" />
+          <div
+            className="rounded-full"
+            style={
+              myGroup
+                ? { padding: 2, background: 'linear-gradient(135deg, #f6a93b, #c1652f)' }
+                : undefined
+            }
+          >
+            {myGroup && (
+              <div className="p-[2px] rounded-full bg-paper">
+                <Avatar user={user} size="md" />
+              </div>
+            )}
+            {!myGroup && <Avatar user={user} size="md" />}
           </div>
           <span
             role="button"
@@ -82,8 +94,17 @@ export default function StoriesRow() {
               onClick={() => setViewerGroupIndex(groups.findIndex((gr) => gr.author.id === g.author.id))}
               className="flex flex-col items-center gap-1.5 shrink-0 w-16"
             >
-              <div className={`p-[2px] rounded-full border-2 ${allSeen ? 'border-line' : 'border-accent'}`}>
-                <Avatar user={g.author} size="md" />
+              <div
+                className="rounded-full"
+                style={
+                  allSeen
+                    ? { padding: 2, border: '2px solid var(--color-line)' }
+                    : { padding: 2, background: 'linear-gradient(135deg, #f6a93b, #c1652f)' }
+                }
+              >
+                <div className="p-[2px] rounded-full bg-paper">
+                  <Avatar user={g.author} size="md" />
+                </div>
               </div>
               <span className="text-[11px] text-ink-soft truncate w-full text-center">{g.author.name.split(' ')[0]}</span>
             </button>

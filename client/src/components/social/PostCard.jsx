@@ -52,57 +52,73 @@ export default function PostCard({ post, onDeleted }) {
   };
 
   return (
-    <div className="rounded-3xl bg-paper p-4 shadow-md shadow-ink/5">
-      <div className="flex items-center justify-between mb-3">
-        <Link to={`/profile/${post.author.id}`} className="flex items-center gap-3">
+    <div className="rounded-xl bg-paper border border-line overflow-hidden">
+      <div className="flex items-center justify-between px-3 py-2.5">
+        <Link to={`/profile/${post.author.id}`} className="flex items-center gap-2.5">
           <Avatar user={post.author} size="sm" />
           <div>
-            <p className="text-sm font-semibold">{post.author.name}</p>
-            <p className="text-xs text-ink-soft">
+            <p className="text-sm font-semibold leading-tight">{post.author.name}</p>
+            <p className="text-xs text-ink-soft leading-tight">
               {timeAgo(post.createdAt)} &middot; {VISIBILITY_LABEL[post.visibility]}
             </p>
           </div>
         </Link>
         {post.author.id === myId && (
-          <button onClick={handleDelete} className="text-xs text-ink-soft hover:text-red-600">
-            Delete
+          <button onClick={handleDelete} title="Delete post" className="text-ink-soft hover:text-red-600 px-1 leading-none text-lg font-bold tracking-widest">
+            &vellip;
           </button>
         )}
       </div>
 
-      {post.content && <p className="text-sm whitespace-pre-wrap mb-3">{post.content}</p>}
+      {post.content && !post.imageUrl && <p className="text-sm whitespace-pre-wrap px-3 pb-3">{post.content}</p>}
       {post.imageUrl &&
         (post.mediaType === 'video' ? (
-          <video src={post.imageUrl} controls className="rounded-xl mb-3 max-h-96 w-full object-cover" />
+          <video src={post.imageUrl} controls className="w-full aspect-square object-cover bg-black" />
         ) : (
-          <img src={post.imageUrl} alt="" className="rounded-xl mb-3 max-h-96 w-full object-cover" />
+          <img src={post.imageUrl} alt="" className="w-full aspect-square object-cover" />
         ))}
 
-      <div className="flex items-center gap-5 text-sm text-ink-soft border-t border-line pt-3">
-        <button onClick={handleLike} className={`flex items-center gap-1.5 ${liked ? 'text-accent font-semibold' : ''}`}>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
+      <div className="flex items-center gap-4 px-2 pt-2">
+        <button onClick={handleLike} className={liked ? 'text-accent' : 'text-ink hover:text-ink-soft'}>
+          <svg width="24" height="24" viewBox="0 0 24 24" fill={liked ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="2">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               d="M12 20.5s-7.5-4.6-10-9.3C.5 8 2 4.5 5.6 4c2-.3 3.9.7 4.9 2.3.9-1.6 2.9-2.6 4.9-2.3C19 4.5 20.5 8 20 11.2c-2.5 4.7-8 9.3-8 9.3Z"
             />
           </svg>
-          {likeCount > 0 && likeCount}
         </button>
-        <button onClick={openComments} className="flex items-center gap-1.5">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+        <button onClick={openComments} className="text-ink hover:text-ink-soft">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <path
               strokeLinecap="round"
               strokeLinejoin="round"
               d="M21 11.5a8.4 8.4 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.4 8.4 0 0 1-3.8-.9L3 21l1.9-5.7a8.4 8.4 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.4 8.4 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5Z"
             />
           </svg>
-          {commentCount > 0 && commentCount}
         </button>
       </div>
 
+      <div className="px-3 pt-1.5 pb-1">
+        <p className="text-sm font-semibold">{likeCount > 0 ? `${likeCount} ${likeCount === 1 ? 'like' : 'likes'}` : 'Be the first to like this'}</p>
+      </div>
+
+      {post.content && post.imageUrl && (
+        <p className="text-sm px-3 pb-1 whitespace-pre-wrap">
+          <span className="font-semibold mr-1">{post.author.name}</span>
+          {post.content}
+        </p>
+      )}
+
+      {!commentsOpen && commentCount > 0 && (
+        <button onClick={openComments} className="text-sm text-ink-soft px-3 pb-3 block">
+          View all {commentCount} comments
+        </button>
+      )}
+      {(commentsOpen || commentCount === 0) && <div className="pb-3" />}
+
       {commentsOpen && (
-        <div className="mt-3 pt-3 border-t border-line space-y-2">
+        <div className="px-3 pb-3 border-t border-line pt-3 space-y-2">
           {comments?.map((c) => (
             <div key={c.id} className="flex items-start gap-2">
               <Avatar user={c.author} size="sm" />

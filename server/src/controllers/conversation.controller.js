@@ -12,7 +12,7 @@ function publicUser(user) {
   return { id, name, username, email, phone, avatarUrl, avatarColor, bio, status, lastSeenAt };
 }
 
-async function serializeConversation(conversation, userId) {
+export async function serializeConversation(conversation, userId) {
   const lastMessage = await Message.findOne({
     where: { conversationId: conversation.id },
     order: [['createdAt', 'DESC']],

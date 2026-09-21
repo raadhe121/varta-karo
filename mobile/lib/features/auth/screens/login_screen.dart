@@ -73,12 +73,22 @@ class _LoginScreenState extends State<LoginScreen>
               ),
             ),
             Padding(
-              padding: const EdgeInsets.all(20),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 4),
               child: TextButton(
                 onPressed: () => context.go('/register'),
                 child: const Text(
                   "Don't have an account? Register",
                   style: TextStyle(color: AppColors.accent),
+                ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
+              child: TextButton(
+                onPressed: () => context.push('/random-chat'),
+                child: const Text(
+                  'Talk to a stranger — no account needed',
+                  style: TextStyle(color: AppColors.inkSoft),
                 ),
               ),
             ),

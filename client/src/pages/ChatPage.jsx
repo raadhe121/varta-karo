@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useChatStore } from '../store/chatStore';
+import { usePresenceStore } from '../store/presenceStore';
 import { fetchConversations } from '../api/chat.api';
 import Sidebar from '../components/layout/Sidebar';
 import TopBar from '../components/layout/TopBar';
@@ -8,16 +9,19 @@ import MessageList from '../components/chat/MessageList';
 import MessageInput from '../components/chat/MessageInput';
 import TypingIndicator from '../components/chat/TypingIndicator';
 import ContactDossier from '../components/chat/ContactDossier';
+import RandomChatWidget from '../components/chat/RandomChatWidget';
 
 export default function ChatPage() {
   const conversations = useChatStore((s) => s.conversations);
   const setConversations = useChatStore((s) => s.setConversations);
   const activeConversationId = useChatStore((s) => s.activeConversationId);
   const setActiveConversation = useChatStore((s) => s.setActiveConversation);
+  const seedFromUsers = usePresenceStore((s) => s.seedFromUsers);
 
   useEffect(() => {
     fetchConversations().then((data) => {
       setConversations(data);
+      seedFromUsers(data.flatMap((c) => c.participants));
       if (!activeConversationId && data.length > 0) {
         setActiveConversation(data[0].id);
       }
@@ -50,6 +54,8 @@ export default function ChatPage() {
 
         {activeConversation && <ContactDossier conversation={activeConversation} />}
       </div>
+
+      <RandomChatWidget />
     </div>
   );
 }

@@ -15,7 +15,7 @@ export default function ProfileSummaryCard() {
   if (!user) return null;
 
   return (
-    <Link to="/profile" className="block rounded-2xl bg-paper p-4 shadow-sm shadow-ink/5 hover:shadow-md transition-shadow">
+    <Link to="/profile" className="block rounded-xl bg-paper border border-line p-4 hover:border-accent/40 transition-colors">
       <div className="flex items-center gap-3">
         <Avatar user={user} size="md" />
         <div className="min-w-0">

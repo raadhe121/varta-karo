@@ -11,6 +11,7 @@ import CommunitiesPage from './pages/CommunitiesPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import GuidelinesPage from './pages/GuidelinesPage';
+import RandomChatPage from './pages/RandomChatPage';
 
 function ProtectedRoute({ children }) {
   const user = useAuthStore((s) => s.user);
@@ -32,6 +33,7 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/guidelines" element={<GuidelinesPage />} />
+        <Route path="/random-chat" element={<RandomChatPage />} />
         <Route
           path="/chat"
           element={

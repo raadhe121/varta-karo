@@ -3,6 +3,7 @@ import { registerMessageHandlers } from './handlers/message.handler.js';
 import { registerTypingHandlers } from './handlers/typing.handler.js';
 import { registerCallHandlers } from './handlers/call.handler.js';
 import { handleConnect, handleDisconnect } from './handlers/presence.handler.js';
+import { attachRandomChat } from './random.js';
 
 export function attachSocket(io) {
   io.use((socket, next) => {
@@ -30,4 +31,6 @@ export function attachSocket(io) {
 
     socket.on('disconnect', () => handleDisconnect(io, socket));
   });
+
+  attachRandomChat(io);
 }

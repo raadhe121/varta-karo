@@ -61,6 +61,11 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           title: const Text('Chat'),
           actions: [
             IconButton(
+              icon: const Icon(Icons.shuffle),
+              tooltip: 'Talk to a stranger',
+              onPressed: () => context.push('/random-chat'),
+            ),
+            IconButton(
               icon: const Icon(Icons.call_outlined),
               tooltip: 'Call history',
               onPressed: () => context.push('/chat/calls'),

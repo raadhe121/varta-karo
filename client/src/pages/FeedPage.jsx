@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
 import { fetchFeed } from '../api/posts.api';
 import AppNav from '../components/layout/AppNav';
-import PostComposer from '../components/social/PostComposer';
 import PostCard from '../components/social/PostCard';
 import StoriesRow from '../components/social/StoriesRow';
-import ActiveFriends from '../components/social/ActiveFriends';
-import ProfileSummaryCard from '../components/social/ProfileSummaryCard';
+import SuggestionsSidebar from '../components/social/SuggestionsSidebar';
 import Spinner from '../components/common/Spinner';
 
 export default function FeedPage() {
@@ -30,20 +28,13 @@ export default function FeedPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col">
+    <div className="min-h-screen flex flex-col bg-page">
       <AppNav />
-      <div className="max-w-6xl w-full mx-auto px-4 py-6 grid grid-cols-[260px_1fr_280px] gap-6 items-start">
-        <div className="sticky top-6">
-          <ProfileSummaryCard />
-        </div>
-
-        <div className="space-y-4 min-w-0">
-          <div className="rounded-2xl bg-paper p-4 shadow-sm shadow-ink/5">
-            <p className="text-xs uppercase tracking-wide text-ink-soft mb-3">Stories</p>
+      <div className="w-[90%] mx-auto px-4 py-8 grid grid-cols-[7fr_3fr] gap-10 items-start">
+        <div className="space-y-6 min-w-0">
+          <div className="rounded-xl bg-paper border border-line px-4 py-4">
             <StoriesRow />
           </div>
-
-          <PostComposer onCreated={(post) => setPosts((prev) => [post, ...(prev || [])])} />
 
           {posts === null ? (
             <div className="flex justify-center py-8">
@@ -51,7 +42,7 @@ export default function FeedPage() {
             </div>
           ) : posts.length === 0 ? (
             <p className="text-sm text-ink-soft text-center py-8">
-              No posts yet. Friend or follow someone, or share your first post above.
+              No posts yet. Friend or follow someone to see their posts here.
             </p>
           ) : (
             <>
@@ -69,8 +60,8 @@ export default function FeedPage() {
           )}
         </div>
 
-        <div className="sticky top-6">
-          <ActiveFriends />
+        <div className="sticky top-8">
+          <SuggestionsSidebar />
         </div>
       </div>
     </div>

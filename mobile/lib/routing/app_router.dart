@@ -26,6 +26,7 @@ import '../features/notifications/providers/notifications_socket_bridge.dart';
 import '../features/notifications/screens/notifications_screen.dart';
 import '../features/profile/screens/edit_profile_screen.dart';
 import '../features/profile/screens/profile_screen.dart';
+import '../features/random_chat/screens/random_chat_screen.dart';
 
 /// Bridges Riverpod's authSessionProvider to go_router's Listenable-based
 /// refresh mechanism, so route redirects re-evaluate whenever auth state
@@ -49,9 +50,13 @@ String? _redirect(Ref ref, GoRouterState state) {
 
   final atSplash = path == '/splash';
   final onAuthStack = path == '/login' || path == '/register';
+  // Reachable logged-out (like /login, /register) but also stays reachable
+  // once logged in — unlike the auth stack, it must NOT bounce a logged-in
+  // user back to /feed.
+  final atRandomChat = path == '/random-chat';
 
   if (!session.isAuthenticated) {
-    return onAuthStack ? null : '/login';
+    return (onAuthStack || atRandomChat) ? null : '/login';
   }
 
   if (onAuthStack || atSplash) return '/feed';
@@ -80,6 +85,9 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
       GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
+      // Top-level and unauthenticated-reachable (see _redirect) — random
+      // chat must work with no session at all.
+      GoRoute(path: '/random-chat', builder: (context, state) => const RandomChatScreen()),
       // Top-level (outside the tab shell) so it overlays full-screen no
       // matter which tab is active when a call starts — pushed/popped
       // imperatively by CallActions rather than navigated to normally.
