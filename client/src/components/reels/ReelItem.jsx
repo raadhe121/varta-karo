@@ -131,7 +131,7 @@ export default function ReelItem({ reel, isActive, muted, onToggleMute, onOpenCo
         playsInline
         muted={muted}
         onClick={handleDoubleTap}
-        className="h-full max-h-full w-auto max-w-full object-contain bg-black cursor-pointer"
+        className="h-full w-full object-contain bg-black cursor-pointer"
       />
 
       {heartBurst && (
