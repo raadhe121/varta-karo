@@ -3,7 +3,30 @@ import { useCallStore } from '../store/callStore';
 import { logCall } from '../api/calls.api';
 import { startRingtone, stopRingtone } from './ringtone';
 
-const ICE_SERVERS = [{ urls: 'stun:stun.l.google.com:19302' }, { urls: 'stun:stun1.l.google.com:19302' }];
+// STUN alone only works when both peers are behind NATs simple enough to
+// allow a direct or hole-punched path. Carrier-grade NAT, mobile data, and
+// many corporate/home routers need a relay — without TURN, calls between
+// such networks can connect but fail to exchange media (often asymmetrically:
+// one side gets a stream, the other gets nothing).
+const ICE_SERVERS = [
+  { urls: 'stun:stun.l.google.com:19302' },
+  { urls: 'stun:stun1.l.google.com:19302' },
+  {
+    urls: 'turn:openrelay.metered.ca:80',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+  {
+    urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+    username: 'openrelayproject',
+    credential: 'openrelayproject',
+  },
+];
 
 let pc = null;
 let pendingCandidates = [];
