@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 
 export const useCallStore = create((set) => ({
-  phase: 'idle', // idle | outgoing | incoming | connected | ended
+  phase: 'idle', // idle | outgoing | incoming | resuming | connected | ended
   role: null, // 'caller' | 'callee'
   callType: 'audio', // 'audio' | 'video'
   conversationId: null,
@@ -13,6 +13,9 @@ export const useCallStore = create((set) => ({
   cameraOff: false,
   startedAt: null,
   error: null,
+  // True on the side that never disconnected, while its peer's page is
+  // reloading/reconnecting and the call is being silently renegotiated.
+  reconnectingPeer: false,
 
   setState: (patch) => set(patch),
 
@@ -30,5 +33,6 @@ export const useCallStore = create((set) => ({
       cameraOff: false,
       startedAt: null,
       error: null,
+      reconnectingPeer: false,
     }),
 }));

@@ -40,11 +40,20 @@ function closePeerConnection() {
   if (pc) {
     pc.onicecandidate = null;
     pc.ontrack = null;
+    pc.onconnectionstatechange = null;
+    pc.oniceconnectionstatechange = null;
     pc.close();
     pc = null;
   }
   pendingCandidates = [];
   pendingOffer = null;
+}
+
+async function flushPendingCandidates() {
+  for (const candidate of pendingCandidates) {
+    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
+  }
+  pendingCandidates = [];
 }
 
 function stopStream(stream) {
@@ -90,7 +99,13 @@ function createPeerConnection(toUserId) {
   connection.onconnectionstatechange = () => {
     console.log('[call] connectionState:', connection.connectionState);
     if (['failed', 'closed'].includes(connection.connectionState) && useCallStore.getState().phase === 'connected') {
-      endCall();
+      // Give the peer a window to send a resume-offer (e.g. after their page
+      // reloaded) before actually ending the call. If a resume replaces `pc`
+      // with a fresh connection in the meantime, `pc !== connection` and this
+      // stale check is skipped instead of killing the new call.
+      setTimeout(() => {
+        if (pc === connection && useCallStore.getState().phase === 'connected') endCall();
+      }, 8000);
     }
   };
 
@@ -172,10 +187,7 @@ export async function acceptCall() {
     localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
 
     await pc.setRemoteDescription(new RTCSessionDescription(pendingOffer));
-    for (const candidate of pendingCandidates) {
-      await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-    }
-    pendingCandidates = [];
+    await flushPendingCandidates();
 
     const answer = await pc.createAnswer();
     await pc.setLocalDescription(answer);
@@ -213,10 +225,7 @@ export async function handleAnswered({ answer }) {
   if (!pc) return;
   stopRingtone();
   await pc.setRemoteDescription(new RTCSessionDescription(answer));
-  for (const candidate of pendingCandidates) {
-    await pc.addIceCandidate(new RTCIceCandidate(candidate)).catch(() => {});
-  }
-  pendingCandidates = [];
+  await flushPendingCandidates();
   useCallStore.getState().setState({ phase: 'connected', startedAt: Date.now() });
 }
 
@@ -260,6 +269,71 @@ export function handleCancelRing() {
   closePeerConnection();
   stopStream(useCallStore.getState().localStream);
   useCallStore.getState().reset();
+}
+
+// Called when this client (re)connects and the server says it still has an
+// active call in progress -- typically after a page refresh. We rejoin as
+// the offer side; the peer (which never disconnected) answers in
+// handleResumeOffer below.
+export async function resumeCall({ peerId, peerUser, conversationId, callType }) {
+  if (useCallStore.getState().phase !== 'idle') return;
+  try {
+    const localStream = await getLocalMedia(callType);
+    useCallStore.getState().setState({
+      phase: 'resuming',
+      role: 'caller',
+      callType,
+      conversationId,
+      remoteUserId: peerId,
+      remoteUser: peerUser,
+      localStream,
+      startedAt: Date.now(),
+    });
+
+    pc = createPeerConnection(peerId);
+    localStream.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+
+    socket()?.emit('call:resume-offer', { toUserId: peerId, conversationId, offer });
+  } catch (err) {
+    useCallStore.getState().setState({ error: err.message || 'Could not rejoin call' });
+    useCallStore.getState().reset();
+  }
+}
+
+// The peer side of a resume: our RTCPeerConnection here is dead (or dying)
+// because the other party reloaded, but our localStream is still live since
+// this tab never reloaded -- only the connection needs renegotiating.
+export async function handleResumeOffer({ fromUserId, offer }) {
+  const { remoteUserId, phase, localStream } = useCallStore.getState();
+  if (phase !== 'connected' || remoteUserId !== fromUserId) return;
+  closePeerConnection();
+
+  pc = createPeerConnection(fromUserId);
+  localStream?.getTracks().forEach((track) => pc.addTrack(track, localStream));
+
+  await pc.setRemoteDescription(new RTCSessionDescription(offer));
+  await flushPendingCandidates();
+
+  const answer = await pc.createAnswer();
+  await pc.setLocalDescription(answer);
+  socket()?.emit('call:resume-answer', { toUserId: fromUserId, answer });
+  useCallStore.getState().setState({ reconnectingPeer: false });
+}
+
+export async function handleResumeAnswer({ answer }) {
+  if (!pc) return;
+  await pc.setRemoteDescription(new RTCSessionDescription(answer));
+  await flushPendingCandidates();
+  useCallStore.getState().setState({ phase: 'connected' });
+}
+
+export function handlePeerReconnecting() {
+  if (useCallStore.getState().phase === 'connected') {
+    useCallStore.getState().setState({ reconnectingPeer: true });
+  }
 }
 
 export function toggleMuted() {

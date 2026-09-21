@@ -12,6 +12,10 @@ import {
   handleEnded,
   handleUnavailable,
   handleCancelRing,
+  resumeCall,
+  handleResumeOffer,
+  handleResumeAnswer,
+  handlePeerReconnecting,
 } from '../call/webrtc';
 
 export function useSocket() {
@@ -49,6 +53,10 @@ export function useSocket() {
     socket.on('call:ended', handleEnded);
     socket.on('call:unavailable', handleUnavailable);
     socket.on('call:cancel-ring', handleCancelRing);
+    socket.on('call:resume-available', resumeCall);
+    socket.on('call:resume-offer', handleResumeOffer);
+    socket.on('call:resume-answer', handleResumeAnswer);
+    socket.on('call:peer-reconnecting', handlePeerReconnecting);
 
     return () => {
       socket.off('message:new', onMessageNew);
@@ -64,6 +72,10 @@ export function useSocket() {
       socket.off('call:ended', handleEnded);
       socket.off('call:unavailable', handleUnavailable);
       socket.off('call:cancel-ring', handleCancelRing);
+      socket.off('call:resume-available', resumeCall);
+      socket.off('call:resume-offer', handleResumeOffer);
+      socket.off('call:resume-answer', handleResumeAnswer);
+      socket.off('call:peer-reconnecting', handlePeerReconnecting);
     };
   }, [accessToken]);
 }

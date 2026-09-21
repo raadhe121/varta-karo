@@ -1,8 +1,15 @@
 import { ConversationParticipant, User } from '../../models/index.js';
 import { addSocket, removeSocket } from '../presence.js';
+import { getActiveCall, endActiveCall } from '../activeCalls.js';
 
 const OFFLINE_GRACE_MS = 5000;
 const pendingOfflineTimers = new Map(); // userId -> Timeout
+
+// Separate from OFFLINE_GRACE_MS: a refreshing client needs time to reload
+// the page, reconnect the socket, re-acquire the camera/mic, and renegotiate
+// before its peer gives up and ends the call.
+const CALL_GRACE_MS = 30000;
+const pendingCallEndTimers = new Map(); // userId -> Timeout
 
 async function conversationRoomsFor(userId) {
   const rows = await ConversationParticipant.findAll({ where: { userId } });
@@ -14,6 +21,26 @@ export async function handleConnect(io, socket) {
   if (timer) {
     clearTimeout(timer);
     pendingOfflineTimers.delete(socket.userId);
+  }
+
+  const callTimer = pendingCallEndTimers.get(socket.userId);
+  if (callTimer) {
+    clearTimeout(callTimer);
+    pendingCallEndTimers.delete(socket.userId);
+  }
+
+  const activeCall = getActiveCall(socket.userId);
+  if (activeCall) {
+    const peer = await User.findByPk(activeCall.peerId);
+    if (peer) {
+      const { id, name, username, avatarUrl, avatarColor } = peer;
+      socket.emit('call:resume-available', {
+        peerId: activeCall.peerId,
+        peerUser: { id, name, username, avatarUrl, avatarColor },
+        conversationId: activeCall.conversationId,
+        callType: activeCall.callType,
+      });
+    }
   }
 
   socket.join(`user:${socket.userId}`);
@@ -32,6 +59,19 @@ export async function handleConnect(io, socket) {
 export function handleDisconnect(io, socket) {
   const isNowOffline = removeSocket(socket.userId, socket.id);
   if (!isNowOffline) return;
+
+  const activeCall = getActiveCall(socket.userId);
+  if (activeCall) {
+    socket.to(`user:${activeCall.peerId}`).emit('call:peer-reconnecting', { fromUserId: socket.userId });
+    const callTimer = setTimeout(() => {
+      pendingCallEndTimers.delete(socket.userId);
+      const entry = endActiveCall(socket.userId);
+      if (entry) {
+        io.to(`user:${entry.peerId}`).emit('call:ended', { fromUserId: socket.userId });
+      }
+    }, CALL_GRACE_MS);
+    pendingCallEndTimers.set(socket.userId, callTimer);
+  }
 
   const timer = setTimeout(async () => {
     pendingOfflineTimers.delete(socket.userId);

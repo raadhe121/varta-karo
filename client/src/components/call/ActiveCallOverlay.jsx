@@ -33,6 +33,7 @@ export default function ActiveCallOverlay() {
   const muted = useCallStore((s) => s.muted);
   const cameraOff = useCallStore((s) => s.cameraOff);
   const startedAt = useCallStore((s) => s.startedAt);
+  const reconnectingPeer = useCallStore((s) => s.reconnectingPeer);
   const elapsed = useDurationTimer(startedAt);
 
   const localVideoRef = useRef(null);
@@ -76,10 +77,17 @@ export default function ActiveCallOverlay() {
     bindStream(remoteAudioRef.current, remoteStream, 'remote audio');
   }, [remoteStream]);
 
-  if (phase !== 'outgoing' && phase !== 'connected') return null;
+  if (!['outgoing', 'resuming', 'connected'].includes(phase)) return null;
 
   const isVideo = callType === 'video';
-  const statusText = phase === 'outgoing' ? 'Ringing...' : formatDuration(elapsed);
+  const statusText =
+    phase === 'outgoing'
+      ? 'Ringing...'
+      : phase === 'resuming'
+        ? 'Reconnecting...'
+        : reconnectingPeer
+          ? `${remoteUser?.name || 'They'} are reconnecting...`
+          : formatDuration(elapsed);
   const showRemoteVideo = isVideo && remoteStream;
 
   return (
