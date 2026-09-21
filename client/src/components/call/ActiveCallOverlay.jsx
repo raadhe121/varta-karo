@@ -85,7 +85,7 @@ export default function ActiveCallOverlay() {
   return (
     <div className="fixed inset-0 z-[60] bg-ink flex flex-col items-center justify-center text-white">
       {showRemoteVideo ? (
-        <video ref={setRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+        <video ref={setRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-contain bg-black" />
       ) : (
         <div className="flex flex-col items-center gap-3">
           <audio ref={setRemoteAudioRef} autoPlay />
