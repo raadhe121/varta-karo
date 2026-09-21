@@ -62,6 +62,10 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           title: const Text('Feed'),
           actions: [
             IconButton(
+              icon: const Icon(Icons.search),
+              onPressed: () => context.push('/feed/search'),
+            ),
+            IconButton(
               icon: const Icon(Icons.add_box_outlined),
               onPressed: () => context.push('/feed/create-post'),
             ),

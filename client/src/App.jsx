@@ -12,6 +12,8 @@ import NotificationsPage from './pages/NotificationsPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import GuidelinesPage from './pages/GuidelinesPage';
 import RandomChatPage from './pages/RandomChatPage';
+import SettingsPage from './pages/SettingsPage';
+import SearchPage from './pages/SearchPage';
 
 function ProtectedRoute({ children }) {
   const user = useAuthStore((s) => s.user);
@@ -47,6 +49,22 @@ export default function App() {
           element={
             <ProtectedRoute>
               <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <ProtectedRoute>
+              <SettingsPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/search"
+          element={
+            <ProtectedRoute>
+              <SearchPage />
             </ProtectedRoute>
           }
         />

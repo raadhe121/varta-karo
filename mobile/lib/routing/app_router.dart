@@ -19,6 +19,7 @@ import '../features/contacts/screens/contacts_screen.dart';
 import '../features/feed/screens/comments_screen.dart';
 import '../features/feed/screens/create_post_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
+import '../features/feed/screens/search_screen.dart';
 import '../features/feed/screens/story_composer_screen.dart';
 import '../features/feed/screens/story_viewer_screen.dart';
 import '../features/notifications/providers/notifications_provider.dart';
@@ -106,6 +107,7 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   // the /profile branch below) — story/new before
                   // story/:userId so the literal segment isn't shadowed.
                   GoRoute(path: 'create-post', builder: (context, state) => const CreatePostScreen()),
+                  GoRoute(path: 'search', builder: (context, state) => const SearchScreen()),
                   GoRoute(path: 'story/new', builder: (context, state) => const StoryComposerScreen()),
                   GoRoute(
                     path: 'story/:userId',
