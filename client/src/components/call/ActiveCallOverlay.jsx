@@ -39,12 +39,38 @@ export default function ActiveCallOverlay() {
   const remoteVideoRef = useRef(null);
   const remoteAudioRef = useRef(null);
 
+  // Effects alone can miss a stream: if this component (re)mounts a fresh
+  // <video> node while the stream in the store hasn't changed reference,
+  // [stream]-keyed effects won't re-fire, leaving the new node's srcObject
+  // unset. Callback refs run at commit time for every mount, so they bind
+  // whatever stream is current right then regardless of effect deps.
+  function bindStream(node, stream, label) {
+    if (!node) return;
+    node.srcObject = stream || null;
+    if (stream) {
+      node.play().catch((err) => console.warn(`[call] ${label} play() rejected:`, err.name, err.message));
+    }
+  }
+
+  const setLocalVideoRef = (node) => {
+    localVideoRef.current = node;
+    bindStream(node, localStream, 'local video');
+  };
+  const setRemoteVideoRef = (node) => {
+    remoteVideoRef.current = node;
+    bindStream(node, remoteStream, 'remote video');
+  };
+  const setRemoteAudioRef = (node) => {
+    remoteAudioRef.current = node;
+    bindStream(node, remoteStream, 'remote audio');
+  };
+
   useEffect(() => {
-    if (localVideoRef.current) localVideoRef.current.srcObject = localStream || null;
+    bindStream(localVideoRef.current, localStream, 'local video');
   }, [localStream]);
   useEffect(() => {
-    if (remoteVideoRef.current) remoteVideoRef.current.srcObject = remoteStream || null;
-    if (remoteAudioRef.current) remoteAudioRef.current.srcObject = remoteStream || null;
+    bindStream(remoteVideoRef.current, remoteStream, 'remote video');
+    bindStream(remoteAudioRef.current, remoteStream, 'remote audio');
   }, [remoteStream]);
 
   if (phase !== 'outgoing' && phase !== 'connected') return null;
@@ -56,10 +82,10 @@ export default function ActiveCallOverlay() {
   return (
     <div className="fixed inset-0 z-[60] bg-ink flex flex-col items-center justify-center text-white">
       {showRemoteVideo ? (
-        <video ref={remoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
+        <video ref={setRemoteVideoRef} autoPlay playsInline className="absolute inset-0 w-full h-full object-cover" />
       ) : (
         <div className="flex flex-col items-center gap-3">
-          <audio ref={remoteAudioRef} autoPlay />
+          <audio ref={setRemoteAudioRef} autoPlay />
           <Avatar user={remoteUser} size="lg" />
         </div>
       )}
@@ -71,7 +97,7 @@ export default function ActiveCallOverlay() {
 
       {isVideo && (
         <video
-          ref={localVideoRef}
+          ref={setLocalVideoRef}
           autoPlay
           playsInline
           muted
