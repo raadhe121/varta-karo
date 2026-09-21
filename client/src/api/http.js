@@ -2,7 +2,9 @@ import axios from 'axios';
 import { useAuthStore } from '../store/authStore';
 import { disconnectSocket } from '../socket/socket';
 
-export const http = axios.create({ baseURL: '/api' });
+const apiOrigin = import.meta.env.VITE_API_URL ?? '';
+
+export const http = axios.create({ baseURL: `${apiOrigin}/api` });
 
 http.interceptors.request.use((config) => {
   const { accessToken } = useAuthStore.getState();
@@ -24,7 +26,7 @@ http.interceptors.response.use(
       config._retried = true;
       try {
         refreshPromise ??= axios
-          .post('/api/auth/refresh', { refreshToken })
+          .post(`${apiOrigin}/api/auth/refresh`, { refreshToken })
           .finally(() => {
             refreshPromise = null;
           });
