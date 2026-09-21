@@ -46,6 +46,9 @@ export default function ActiveCallOverlay() {
   // whatever stream is current right then regardless of effect deps.
   function bindStream(node, stream, label) {
     if (!node) return;
+    // Reassigning srcObject to the stream it already holds restarts loading
+    // and aborts any in-flight play() — skip when nothing actually changed.
+    if (node.srcObject === (stream || null)) return;
     node.srcObject = stream || null;
     if (stream) {
       node.play().catch((err) => console.warn(`[call] ${label} play() rejected:`, err.name, err.message));

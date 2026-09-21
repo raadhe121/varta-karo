@@ -72,7 +72,15 @@ function createPeerConnection(toUserId) {
       'stream tracks:',
       event.streams[0]?.getTracks().map((t) => `${t.kind}:${t.readyState}:enabled=${t.enabled}`)
     );
-    useCallStore.getState().setState({ remoteStream: event.streams[0] });
+    const nextStream = event.streams[0];
+    // ontrack fires once per track (audio, then video) and each call can
+    // hand back a distinct MediaStream object even for the same underlying
+    // stream. Reassigning a <video>/<audio> element's srcObject to a "new"
+    // stream aborts any in-flight play() and restarts loading, so only
+    // update the store when the stream has actually changed.
+    if (useCallStore.getState().remoteStream?.id !== nextStream?.id) {
+      useCallStore.getState().setState({ remoteStream: nextStream });
+    }
   };
 
   connection.oniceconnectionstatechange = () => {
