@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
 import { User, Follow, Block, Post, Like, Comment } from '../models/index.js';
 import { canView } from '../services/visibility.service.js';
@@ -11,12 +12,12 @@ function fullUser(user) {
   const {
     id, name, username, email, phone, avatarUrl, avatarColor, bio,
     coverPhotoUrl, work, education, location, links, profileVisibility,
-    status, lastSeenAt,
+    status, lastSeenAt, passwordHash,
   } = user;
   return {
     id, name, username, email, phone, avatarUrl, avatarColor, bio,
     coverPhotoUrl, work, education, location, links, profileVisibility,
-    status, lastSeenAt,
+    status, lastSeenAt, hasPassword: Boolean(passwordHash),
   };
 }
 
@@ -53,6 +54,51 @@ export async function updateMe(req, res) {
   await user.save();
 
   return res.json(fullUser(user));
+}
+
+export async function updateEmail(req, res) {
+  const { email } = req.body;
+  if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+    return res.status(400).json({ message: 'A valid email is required' });
+  }
+
+  const existing = await User.findOne({ where: { email, id: { [Op.ne]: req.userId } } });
+  if (existing) {
+    return res.status(409).json({ message: 'That email is already in use' });
+  }
+
+  const user = await User.findByPk(req.userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  user.email = email;
+  await user.save();
+
+  return res.json(fullUser(user));
+}
+
+export async function updatePassword(req, res) {
+  const { currentPassword, newPassword } = req.body;
+  if (!newPassword || newPassword.length < 8) {
+    return res.status(400).json({ message: 'New password must be at least 8 characters' });
+  }
+
+  const user = await User.findByPk(req.userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  // A user who signed up with just a username (no password set yet) can add
+  // one without proving a "current" password that never existed; anyone who
+  // already has one must prove it first.
+  if (user.passwordHash) {
+    const valid = currentPassword && (await bcrypt.compare(currentPassword, user.passwordHash));
+    if (!valid) {
+      return res.status(401).json({ message: 'Current password is incorrect' });
+    }
+  }
+
+  user.passwordHash = await bcrypt.hash(newPassword, 10);
+  await user.save();
+
+  return res.json({ message: 'Password updated' });
 }
 
 export async function searchUsers(req, res) {
@@ -181,6 +227,8 @@ export async function getProfile(req, res) {
     followerCount,
     followingCount,
     profileVisibility: req.userId === id ? user.profileVisibility : undefined,
+    email: req.userId === id ? user.email : undefined,
+    hasPassword: req.userId === id ? Boolean(user.passwordHash) : undefined,
     about: showAbout
       ? { work: user.work, education: user.education, location: user.location, links: user.links || [] }
       : null,

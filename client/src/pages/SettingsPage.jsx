@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useAuth } from '../hooks/useAuth';
-import { updateMe } from '../api/users.api';
+import { updateMe, updateEmail, updatePassword } from '../api/users.api';
 import { fetchProfile } from '../api/social.api';
 import { uploadMedia } from '../api/chat.api';
 import { fetchBlockedUsers, unblockUser } from '../api/block.api';
@@ -13,6 +13,7 @@ import AppNav from '../components/layout/AppNav';
 
 const SECTIONS = [
   { id: 'profile', label: 'Edit profile' },
+  { id: 'security', label: 'Account & security' },
   { id: 'privacy', label: 'Account privacy' },
   { id: 'notifications', label: 'Notifications' },
   { id: 'blocked', label: 'Blocked accounts' },
@@ -135,6 +136,137 @@ function EditProfileSection({ profile, onSaved }) {
           {saving ? 'Saving...' : 'Submit'}
         </Button>
       </form>
+    </div>
+  );
+}
+
+function EmailForm({ profile, onSaved }) {
+  const [email, setEmail] = useState(profile.email || '');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess(false);
+    setSaving(true);
+    try {
+      onSaved(await updateEmail(email.trim()));
+      setSuccess(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update email');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <p className="text-sm font-semibold">Email address</p>
+      <input
+        type="email"
+        className="input"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="you@example.com"
+        required
+      />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {success && <p className="text-sm text-emerald-700">Email updated.</p>}
+      <Button type="submit" disabled={saving || email.trim() === (profile.email || '')}>
+        {saving ? 'Saving...' : 'Save email'}
+      </Button>
+    </form>
+  );
+}
+
+function PasswordForm({ hasPassword: initialHasPassword }) {
+  const [hasPassword, setHasPassword] = useState(initialHasPassword);
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState(false);
+
+  const submit = async (e) => {
+    e.preventDefault();
+    setError('');
+    setSuccess(false);
+    if (newPassword !== confirmPassword) {
+      setError('Passwords do not match');
+      return;
+    }
+    setSaving(true);
+    try {
+      await updatePassword({ currentPassword: hasPassword ? currentPassword : undefined, newPassword });
+      setSuccess(true);
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      setHasPassword(true);
+    } catch (err) {
+      setError(err.response?.data?.message || 'Could not update password');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <p className="text-sm font-semibold">{hasPassword ? 'Change password' : 'Set a password'}</p>
+      {!hasPassword && (
+        <p className="text-xs text-ink-soft">
+          Your account doesn't have a password yet (you signed up with just a username). Set one to be able to log in
+          with a password later.
+        </p>
+      )}
+      {hasPassword && (
+        <input
+          type="password"
+          className="input"
+          value={currentPassword}
+          onChange={(e) => setCurrentPassword(e.target.value)}
+          placeholder="Current password"
+          required
+        />
+      )}
+      <input
+        type="password"
+        className="input"
+        value={newPassword}
+        onChange={(e) => setNewPassword(e.target.value)}
+        placeholder="New password (min. 8 characters)"
+        minLength={8}
+        required
+      />
+      <input
+        type="password"
+        className="input"
+        value={confirmPassword}
+        onChange={(e) => setConfirmPassword(e.target.value)}
+        placeholder="Confirm new password"
+        minLength={8}
+        required
+      />
+      {error && <p className="text-sm text-red-600">{error}</p>}
+      {success && <p className="text-sm text-emerald-700">Password updated.</p>}
+      <Button type="submit" disabled={saving}>
+        {saving ? 'Saving...' : hasPassword ? 'Update password' : 'Set password'}
+      </Button>
+    </form>
+  );
+}
+
+function SecuritySection({ profile, onSaved }) {
+  return (
+    <div className="space-y-8 max-w-xl">
+      <p className="font-display font-semibold text-lg">Account &amp; security</p>
+      <div className="pb-6 border-b border-line">
+        <EmailForm profile={profile} onSaved={onSaved} />
+      </div>
+      <PasswordForm hasPassword={Boolean(profile.hasPassword)} />
     </div>
   );
 }
@@ -359,6 +491,8 @@ export default function SettingsPage() {
             <p className="text-sm text-ink-soft">Loading...</p>
           ) : section === 'profile' ? (
             <EditProfileSection profile={profile} onSaved={onSaved} />
+          ) : section === 'security' ? (
+            <SecuritySection profile={profile} onSaved={onSaved} />
           ) : section === 'privacy' ? (
             <PrivacySection profile={profile} onSaved={onSaved} />
           ) : section === 'notifications' ? (
