@@ -7,6 +7,7 @@ import { fetchProfile } from '../api/social.api';
 import { uploadMedia } from '../api/chat.api';
 import Avatar from '../components/common/Avatar';
 import Button from '../components/common/Button';
+import Modal from '../components/common/Modal';
 import AppNav from '../components/layout/AppNav';
 
 const SECTIONS = [
@@ -244,6 +245,7 @@ export default function SettingsPage() {
 
   const [profile, setProfile] = useState(null);
   const [section, setSection] = useState('profile');
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     if (myId) fetchProfile(myId).then(setProfile);
@@ -257,6 +259,10 @@ export default function SettingsPage() {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const confirmLogout = () => {
+    setShowLogoutConfirm(true);
   };
 
   return (
@@ -285,7 +291,7 @@ export default function SettingsPage() {
           </nav>
           <div className="p-2 border-t border-line">
             <button
-              onClick={handleLogout}
+              onClick={confirmLogout}
               className="w-full text-left px-3 py-2.5 rounded-xl text-sm font-semibold text-red-600 hover:bg-red-50"
             >
               Log out
@@ -305,6 +311,20 @@ export default function SettingsPage() {
           )}
         </main>
       </div>
+
+      <Modal open={showLogoutConfirm} onClose={() => setShowLogoutConfirm(false)} title="Log out">
+        <div className="space-y-4">
+          <p className="text-sm text-ink-soft">Are you sure you want to log out?</p>
+          <div className="flex gap-3 justify-end">
+            <Button variant="outline" onClick={() => setShowLogoutConfirm(false)}>
+              Cancel
+            </Button>
+            <Button variant="danger" onClick={handleLogout}>
+              Log out
+            </Button>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 }
