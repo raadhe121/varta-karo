@@ -18,7 +18,7 @@ const FILTERS = [
   { id: 'calls', label: 'Calls' },
 ];
 
-export default function Sidebar({ onSelectConversation }) {
+export default function Sidebar({ onSelectConversation, hiddenOnMobile }) {
   const user = useAuthStore((s) => s.user);
   const accessToken = useAuthStore((s) => s.accessToken);
   const upsertConversation = useChatStore((s) => s.upsertConversation);
@@ -35,7 +35,9 @@ export default function Sidebar({ onSelectConversation }) {
   const unreadCount = conversations.filter((c) => c.lastMessage && c.lastMessage.senderId !== user?.id).length;
 
   return (
-    <aside className="w-80 shrink-0 border-r border-line flex flex-col h-full bg-paper">
+    <aside
+      className={`${hiddenOnMobile ? 'hidden md:flex' : 'flex'} w-full md:w-80 shrink-0 border-r border-line flex-col h-full bg-paper`}
+    >
       <div className="p-4 flex items-center justify-between border-b border-line">
         <Link to="/profile" className="flex items-center gap-2 min-w-0">
           <Avatar user={user} size="sm" />

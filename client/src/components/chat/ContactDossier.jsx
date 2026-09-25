@@ -119,7 +119,7 @@ export default function ContactDossier({ conversation }) {
 
   if (conversation.type !== 'direct') {
     return (
-      <aside className="w-80 shrink-0 border-l border-line bg-paper overflow-y-auto">
+      <aside className="hidden lg:block w-80 shrink-0 border-l border-line bg-paper overflow-y-auto">
         <GroupInfo conversation={conversation} />
       </aside>
     );
@@ -128,7 +128,7 @@ export default function ContactDossier({ conversation }) {
   if (!other) return null;
 
   return (
-    <aside className="w-80 shrink-0 border-l border-line bg-paper overflow-y-auto">
+    <aside className="hidden lg:block w-80 shrink-0 border-l border-line bg-paper overflow-y-auto">
       <div className="p-5">
         <p className="text-xs uppercase tracking-wide text-ink-soft mb-4">Contact Dossier</p>
 

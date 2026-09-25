@@ -35,12 +35,12 @@ export default function ChatPage() {
     <div className="h-screen flex flex-col">
       <AppNav />
       <div className="flex-1 flex min-h-0">
-        <Sidebar onSelectConversation={setActiveConversation} />
+        <Sidebar onSelectConversation={setActiveConversation} hiddenOnMobile={Boolean(activeConversation)} />
 
-        <main className="flex-1 flex flex-col min-w-0">
+        <main className={`${activeConversation ? 'flex' : 'hidden md:flex'} flex-1 flex-col min-w-0`}>
           {activeConversation ? (
             <>
-              <TopBar conversation={activeConversation} />
+              <TopBar conversation={activeConversation} onBack={() => setActiveConversation(null)} />
               <MessageList conversationId={activeConversation.id} isGroup={activeConversation.type === 'group'} />
               <TypingIndicator conversationId={activeConversation.id} />
               <MessageInput conversationId={activeConversation.id} disabled={activeConversation.messagingDisabled} />

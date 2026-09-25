@@ -16,7 +16,7 @@ function formatLastSeen(lastSeenAt) {
   return `last seen ${Math.floor(diffMin / 60)}h ago`;
 }
 
-export default function TopBar({ conversation }) {
+export default function TopBar({ conversation, onBack }) {
   const myId = useAuthStore((s) => s.user?.id);
   const presence = usePresenceStore((s) => s.byUserId);
   const callPhase = useCallStore((s) => s.phase);
@@ -52,6 +52,11 @@ export default function TopBar({ conversation }) {
   return (
     <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-line bg-paper">
       <div className="flex items-center gap-3">
+        {onBack && (
+          <button onClick={onBack} className="md:hidden h-9 w-9 -ml-1 rounded-full flex items-center justify-center hover:bg-paper-soft text-ink-soft">
+            &larr;
+          </button>
+        )}
         <Avatar user={avatarUser} />
         <div>
           <p className="font-display font-semibold">{title}</p>
