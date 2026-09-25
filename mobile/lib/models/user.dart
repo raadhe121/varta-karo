@@ -114,3 +114,16 @@ class UserLink {
 
   Map<String, dynamic> toJson() => {'label': label, 'url': url};
 }
+
+/// A "People You May Know" entry: `GET /users/suggestions` returns the
+/// public user shape spread with `mutualCount`/`note` — `AppUser.fromJson`
+/// already tolerates the extra fields, so this just carries `note` alongside.
+class Suggestion {
+  final AppUser user;
+  final String note;
+
+  const Suggestion({required this.user, required this.note});
+
+  factory Suggestion.fromJson(Map<String, dynamic> json) =>
+      Suggestion(user: AppUser.fromJson(json), note: json['note'] as String? ?? '');
+}

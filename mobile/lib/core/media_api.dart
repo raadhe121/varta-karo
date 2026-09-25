@@ -1,22 +1,38 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import 'api_client.dart';
+import '../config/env.dart';
 
-/// POST /api/media/upload — shared across features (profile avatar/cover,
-/// chat attachments, posts, stories). Field name must be exactly `file`,
-/// per the backend's `upload.single('file')` middleware.
+/// Uploads go straight from the device to Cloudinary, never through our
+/// server -- keeps large image/video payloads off the backend and its
+/// ephemeral disk, mirroring `client/src/api/cloudinary.js`. Uses a plain
+/// Dio instance (not the authed `dioProvider`'s) since Cloudinary needs no
+/// app auth header.
 class MediaApi {
-  final Dio _dio;
-
-  MediaApi(this._dio);
+  final Dio _dio = Dio();
 
   Future<Map<String, dynamic>> upload({required String path, required String filename, String? mimeType}) async {
+    final cloudName = Env.cloudinaryCloudName;
+    final uploadPreset = Env.cloudinaryUploadPreset;
+    if (cloudName.isEmpty || uploadPreset.isEmpty) {
+      throw StateError('Cloudinary is not configured (CLOUDINARY_CLOUD_NAME / CLOUDINARY_UPLOAD_PRESET missing)');
+    }
+
     final formData = FormData.fromMap({
       'file': await MultipartFile.fromFile(path, filename: filename, contentType: _parseMime(mimeType)),
+      'upload_preset': uploadPreset,
     });
-    final res = await _dio.post<Map<String, dynamic>>('/media/upload', data: formData);
-    return res.data!;
+    final res = await _dio.post<Map<String, dynamic>>(
+      'https://api.cloudinary.com/v1_1/$cloudName/auto/upload',
+      data: formData,
+    );
+    final data = res.data!;
+    return {
+      'url': data['secure_url'],
+      'originalName': filename,
+      'mimeType': mimeType,
+      'size': data['bytes'],
+    };
   }
 
   DioMediaType? _parseMime(String? mimeType) {
@@ -26,4 +42,4 @@ class MediaApi {
   }
 }
 
-final mediaApiProvider = Provider<MediaApi>((ref) => MediaApi(ref.read(dioProvider)));
+final mediaApiProvider = Provider<MediaApi>((ref) => MediaApi());

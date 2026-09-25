@@ -41,6 +41,7 @@ dependencies:
   flutter_webrtc: ^1.6.2+hotfix.3
   vibration: ^3.2.1
   flutter_secure_storage: ^11.2.0
+  shared_preferences: ^2.5.3
   image_picker: ^1.2.3
   video_player: ^2.11.1
   chewie: ^1.15.0

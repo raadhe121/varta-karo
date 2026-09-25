@@ -4,11 +4,13 @@ import 'package:go_router/go_router.dart';
 
 import '../../../common/widgets/screen.dart';
 import '../../../config/theme.dart';
+import '../../../config/theme_provider.dart';
 import '../providers/feed_actions.dart';
 import '../providers/feed_provider.dart';
 import '../providers/stories_actions.dart';
 import '../widgets/post_card.dart';
 import '../widgets/stories_row.dart';
+import '../widgets/suggestions_card.dart';
 
 /// Ports `src/pages/FeedPage.jsx`: stories row, composer entry point,
 /// paginated post list. The desktop-only sidebars (ProfileSummaryCard,
@@ -62,6 +64,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
           title: const Text('Feed'),
           actions: [
             IconButton(
+              icon: Icon(ref.watch(themeModeProvider) == ThemeMode.dark ? Icons.light_mode_outlined : Icons.dark_mode_outlined),
+              tooltip: 'Toggle theme',
+              onPressed: () => ref.read(themeModeProvider.notifier).toggle(),
+            ),
+            IconButton(
               icon: const Icon(Icons.search),
               onPressed: () => context.push('/feed/search'),
             ),
@@ -87,6 +94,11 @@ class _FeedScreenState extends ConsumerState<FeedScreen> {
                     padding: const EdgeInsets.only(top: 12, bottom: 24),
                     children: [
                       const StoriesRow(),
+                      const SizedBox(height: 12),
+                      const Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: SuggestionsCard(),
+                      ),
                       const SizedBox(height: 12),
                       if (posts.isEmpty)
                         const Padding(

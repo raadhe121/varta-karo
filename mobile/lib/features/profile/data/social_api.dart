@@ -50,6 +50,14 @@ class SocialApi {
   Future<void> followUser(String userId) => _dio.post<void>('/follow/$userId');
 
   Future<void> unfollowUser(String userId) => _dio.delete<void>('/follow/$userId');
+
+  /// GET /users/suggestions — "People You May Know": users the caller
+  /// doesn't already follow, ranked by mutual-friend count. Mirrors
+  /// `client/src/api/social.api.js`'s `fetchSuggestions`.
+  Future<List<Suggestion>> fetchSuggestions() async {
+    final res = await _dio.get<List<dynamic>>('/users/suggestions');
+    return res.data!.map((e) => Suggestion.fromJson(e as Map<String, dynamic>)).toList();
+  }
 }
 
 final socialApiProvider = Provider<SocialApi>((ref) => SocialApi(ref.read(dioProvider)));

@@ -16,6 +16,13 @@ class Env {
   static String get apiOrigin => 'http://$host:5000';
   static String get apiUrl => '$apiOrigin/api';
 
+  /// Mirrors the web client's VITE_CLOUDINARY_CLOUD_NAME / _UPLOAD_PRESET —
+  /// uploads go straight from the device to Cloudinary, never through our
+  /// server. Pass at build/run time, e.g.
+  /// `--dart-define=CLOUDINARY_CLOUD_NAME=xxx --dart-define=CLOUDINARY_UPLOAD_PRESET=yyy`.
+  static const String cloudinaryCloudName = String.fromEnvironment('CLOUDINARY_CLOUD_NAME', defaultValue: '');
+  static const String cloudinaryUploadPreset = String.fromEnvironment('CLOUDINARY_UPLOAD_PRESET', defaultValue: '');
+
   /// The API returns media fields (avatarUrl, mediaUrl, imageUrl, ...) as
   /// relative `/uploads/...` paths — this resolves them to a loadable URL.
   static String resolveMediaUrl(String? path) {
