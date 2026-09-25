@@ -1,0 +1,21 @@
+name: Keep-alive ping
+
+on:
+  schedule:
+    # Every 13 minutes. GitHub Actions cron can lag a few minutes under load,
+    # but that's fine for a keep-alive -- it just needs to land well inside
+    # Render's free-tier idle-spindown window.
+    - cron: '*/13 * * * *'
+  workflow_dispatch: {}
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping staging health endpoint
+        run: |
+          status=$(curl -s -o /dev/null -w "%{http_code}" https://varta-karo.onrender.com/api/health)
+          echo "Health check responded with status $status"
+          if [ "$status" -ge 400 ] || [ "$status" -eq 0 ]; then
+            echo "::warning::Keep-alive ping failed with status $status"
+          fi
