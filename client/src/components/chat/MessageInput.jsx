@@ -7,9 +7,10 @@ import Button from '../common/Button';
 const TYPING_STOP_DELAY = 2000;
 const QUICK_REPLIES = ['Sounds good 👍', 'On it', 'Got it', "Let's talk later"];
 
-export default function MessageInput({ conversationId }) {
+export default function MessageInput({ conversationId, disabled }) {
   const [text, setText] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [error, setError] = useState('');
   const typingTimeout = useRef(null);
   const fileInputRef = useRef(null);
   const addMessage = useChatStore((s) => s.addMessage);
@@ -30,7 +31,12 @@ export default function MessageInput({ conversationId }) {
     const socket = getSocket();
     if (!socket) return;
     socket.emit('message:send', { conversationId, ...payload }, (res) => {
-      if (res?.message) addMessage(conversationId, res.message);
+      if (res?.message) {
+        addMessage(conversationId, res.message);
+        setError('');
+      } else if (res?.error) {
+        setError(res.error);
+      }
     });
   };
 
@@ -57,8 +63,17 @@ export default function MessageInput({ conversationId }) {
     }
   };
 
+  if (disabled) {
+    return (
+      <div className="border-t border-line bg-paper p-3">
+        <p className="text-sm text-ink-soft text-center">You can't send messages in this conversation.</p>
+      </div>
+    );
+  }
+
   return (
     <div className="border-t border-line bg-paper">
+      {error && <p className="text-xs text-red-600 px-3 pt-2">{error}</p>}
       <div className="flex items-center gap-2 px-3 pt-2.5 overflow-x-auto">
         <span className="text-[11px] font-semibold text-ink-soft shrink-0">QUICK:</span>
         {QUICK_REPLIES.map((reply) => (

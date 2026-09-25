@@ -36,4 +36,7 @@ export const env = {
   otp: {
     expiresInMinutes: Number(process.env.OTP_EXPIRES_IN_MINUTES || 5),
   },
+  google: {
+    clientId: process.env.GOOGLE_CLIENT_ID || '',
+  },
 };

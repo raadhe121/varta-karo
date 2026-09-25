@@ -78,13 +78,15 @@ export default function RandomChatPage() {
   const navigate = useNavigate();
 
   const socketRef = useRef(null);
-  const [phase, setPhase] = useState('idle'); // idle | waiting | chatting
+  const [phase, setPhase] = useState('idle'); // idle | waiting | chatting | ended
+  const [endedBy, setEndedBy] = useState(null); // 'self' | 'partner' | null
   const [partner, setPartner] = useState(null);
   const [messages, setMessages] = useState([]);
   const [text, setText] = useState('');
   const [requestState, setRequestState] = useState('none'); // none | pending | sent
   const [hasPendingRequest, setHasPendingRequest] = useState(false);
   const [connectedNotice, setConnectedNotice] = useState(null);
+  const [busyAction, setBusyAction] = useState(null); // 'next' | 'end' | null
 
   useEffect(() => {
     const socket = io(`${apiOrigin}/random`, {
@@ -96,6 +98,7 @@ export default function RandomChatPage() {
     socket.on('random:waiting', () => setPhase('waiting'));
     socket.on('random:matched', ({ partner: p }) => {
       setPhase('chatting');
+      setEndedBy(null);
       setPartner(p);
       setMessages([]);
       setRequestState('none');
@@ -105,8 +108,8 @@ export default function RandomChatPage() {
       setMessages((prev) => [...prev, { fromSelf: false, text: msg, at }]);
     });
     socket.on('random:partner-left', () => {
-      setPhase('idle');
-      setPartner(null);
+      setPhase('ended');
+      setEndedBy('partner');
       setHasPendingRequest(false);
     });
     socket.on('random:request-sent', ({ pending }) => setRequestState(pending ? 'pending' : 'sent'));
@@ -121,17 +124,48 @@ export default function RandomChatPage() {
 
   const findStranger = () => socketRef.current?.emit('random:join');
 
-  const next = () => {
-    setMessages([]);
-    setPartner(null);
-    setRequestState('none');
-    setHasPendingRequest(false);
-    socketRef.current?.emit('random:next');
+  // 'next' | 'end' | null — briefly disables the triggering button and shows
+  // a spinner so these actions read as deliberate rather than instant.
+  const runWithDelay = (action, key) => {
+    if (busyAction) return;
+    setBusyAction(key);
+    setTimeout(() => {
+      action();
+      setBusyAction(null);
+    }, 700);
   };
 
+  const next = () => {
+    runWithDelay(() => {
+      setMessages([]);
+      setPartner(null);
+      setEndedBy(null);
+      setRequestState('none');
+      setHasPendingRequest(false);
+      setPhase('waiting');
+      socketRef.current?.emit('random:next');
+    }, 'next');
+  };
+
+  // Ends the current pairing but stays on the chat screen showing a "chat
+  // ended" state (matching what the partner sees on their side), instead of
+  // dropping straight back to the idle "Find a stranger" screen.
   const leave = () => {
+    runWithDelay(() => {
+      socketRef.current?.emit('random:leave');
+      setPhase('ended');
+      setEndedBy('self');
+    }, 'end');
+  };
+
+  const cancelWaiting = () => {
     socketRef.current?.emit('random:leave');
     setPhase('idle');
+  };
+
+  const closeChat = () => {
+    setPhase('idle');
+    setEndedBy(null);
     setPartner(null);
     setMessages([]);
   };
@@ -176,32 +210,36 @@ export default function RandomChatPage() {
             <div className="p-8 text-center space-y-3">
               <div className="h-8 w-8 mx-auto rounded-full border-2 border-accent border-t-transparent animate-spin" />
               <p className="text-sm text-ink-soft">Looking for someone to match you with...</p>
-              <button onClick={leave} className="text-xs text-ink-soft hover:underline">
+              <button onClick={cancelWaiting} className="text-xs text-ink-soft hover:underline">
                 Cancel
               </button>
             </div>
           )}
 
-          {phase === 'chatting' && (
+          {(phase === 'chatting' || phase === 'ended') && (
             <div className="flex flex-col h-[520px]">
               <div className="flex items-center justify-between gap-2 px-4 py-3 border-b border-line">
                 <div className="flex items-center gap-2.5 min-w-0">
                   <Avatar user={partner?.isGuest ? { name: partner?.name } : partner} size="sm" />
                   <div className="min-w-0">
                     <p className="text-sm font-semibold truncate">{partner?.isGuest ? partner.name : partner?.name}</p>
-                    <p className="text-xs text-ink-soft">{partner?.isGuest ? 'Anonymous' : 'Has an account'}</p>
+                    <p className="text-xs text-ink-soft">
+                      {phase === 'ended' ? 'Chat ended' : partner?.isGuest ? 'Anonymous' : 'Has an account'}
+                    </p>
                   </div>
                 </div>
-                {user && requestState === 'none' && (
+                {phase === 'chatting' && user && requestState === 'none' && (
                   <button onClick={sendRequest} className="text-xs font-semibold text-accent shrink-0">
                     Add Friend
                   </button>
                 )}
-                {requestState === 'sent' && <span className="text-xs text-ink-soft shrink-0">Request sent</span>}
-                {requestState === 'pending' && <span className="text-xs text-ink-soft shrink-0">Waiting for sign-up</span>}
+                {phase === 'chatting' && requestState === 'sent' && <span className="text-xs text-ink-soft shrink-0">Request sent</span>}
+                {phase === 'chatting' && requestState === 'pending' && (
+                  <span className="text-xs text-ink-soft shrink-0">Waiting for sign-up</span>
+                )}
               </div>
 
-              {hasPendingRequest && (
+              {phase === 'chatting' && hasPendingRequest && (
                 <div className="mx-4 mt-3 rounded-xl bg-accent-soft p-3">
                   <p className="text-sm font-semibold">Your chat partner wants to add you as a friend</p>
                   <p className="text-xs text-ink-soft mt-0.5">Log in to accept — you'll both be able to keep chatting after.</p>
@@ -209,7 +247,7 @@ export default function RandomChatPage() {
                 </div>
               )}
 
-              {connectedNotice && (
+              {phase === 'chatting' && connectedNotice && (
                 <div className="mx-4 mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 flex items-center justify-between">
                   <p className="text-sm text-emerald-800 font-medium">You're friends now!</p>
                   <button onClick={() => navigate('/chat')} className="text-xs font-semibold text-emerald-800 underline">
@@ -233,28 +271,71 @@ export default function RandomChatPage() {
                     </div>
                   </div>
                 ))}
+                {phase === 'ended' && (
+                  <div className="flex justify-center mt-2">
+                    <span className="text-xs font-medium text-ink-soft bg-paper-soft rounded-full px-3 py-1">
+                      {endedBy === 'self' ? 'You ended the chat' : 'Your chat partner ended the chat'}
+                    </span>
+                  </div>
+                )}
               </div>
 
-              <form onSubmit={send} className="flex items-center gap-2 px-4 py-3 border-t border-line">
-                <input
-                  className="input flex-1"
-                  placeholder="Type a message..."
-                  value={text}
-                  onChange={(e) => setText(e.target.value)}
-                />
-                <Button type="submit" className="text-sm px-4">
-                  Send
-                </Button>
-              </form>
+              {phase === 'chatting' && (
+                <form onSubmit={send} className="flex items-center gap-2 px-4 py-3 border-t border-line">
+                  <input
+                    className="input flex-1"
+                    placeholder="Type a message..."
+                    value={text}
+                    onChange={(e) => setText(e.target.value)}
+                  />
+                  <Button type="submit" className="text-sm px-4">
+                    Send
+                  </Button>
+                </form>
+              )}
 
-              <div className="flex items-center justify-center gap-4 px-4 py-2.5 border-t border-line">
-                <button onClick={next} className="text-sm font-semibold text-accent">
-                  Next stranger
-                </button>
-                <button onClick={leave} className="text-sm text-ink-soft">
-                  Stop
-                </button>
-              </div>
+              {phase === 'chatting' && (
+                <div className="flex items-center justify-center gap-4 px-4 py-2.5 border-t border-line">
+                  <button onClick={next} disabled={!!busyAction} className="text-sm font-semibold text-accent disabled:opacity-50">
+                    {busyAction === 'next' ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                        Next stranger
+                      </span>
+                    ) : (
+                      'Next stranger'
+                    )}
+                  </button>
+                  <button onClick={leave} disabled={!!busyAction} className="text-sm text-ink-soft disabled:opacity-50">
+                    {busyAction === 'end' ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded-full border-2 border-ink-soft border-t-transparent animate-spin" />
+                        Ending...
+                      </span>
+                    ) : (
+                      'Stop'
+                    )}
+                  </button>
+                </div>
+              )}
+
+              {phase === 'ended' && (
+                <div className="flex items-center justify-center gap-4 px-4 py-2.5 border-t border-line">
+                  <button onClick={next} disabled={!!busyAction} className="text-sm font-semibold text-accent disabled:opacity-50">
+                    {busyAction === 'next' ? (
+                      <span className="flex items-center gap-1.5">
+                        <span className="h-3 w-3 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                        New Chat
+                      </span>
+                    ) : (
+                      'New Chat'
+                    )}
+                  </button>
+                  <button onClick={closeChat} disabled={!!busyAction} className="text-sm text-ink-soft disabled:opacity-50">
+                    Close
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

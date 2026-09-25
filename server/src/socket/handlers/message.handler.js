@@ -1,16 +1,30 @@
 import { Conversation, ConversationParticipant, Message, MessageStatus, User } from '../../models/index.js';
+import { isBlockedEitherWay } from '../../services/block.service.js';
 
 export function registerMessageHandlers(io, socket) {
   socket.on('message:send', async (payload, ack) => {
     try {
       const { conversationId, type = 'text', content, mediaUrl, mediaMeta, replyToId } = payload || {};
 
-      const participant = await ConversationParticipant.findOne({
-        where: { conversationId, userId: socket.userId },
-      });
+      const [participant, conversation, otherParticipants] = await Promise.all([
+        ConversationParticipant.findOne({ where: { conversationId, userId: socket.userId } }),
+        Conversation.findByPk(conversationId),
+        ConversationParticipant.findAll({ where: { conversationId } }),
+      ]);
       if (!participant) {
         return ack?.({ error: 'Not a member of this conversation' });
       }
+
+      if (conversation?.type === 'direct') {
+        const otherId = otherParticipants.find((p) => p.userId !== socket.userId)?.userId;
+        if (otherId && (await isBlockedEitherWay(socket.userId, otherId))) {
+          return ack?.({ error: 'You can\'t message this user' });
+        }
+      }
+
+      const expiresAt = conversation?.disappearingSeconds
+        ? new Date(Date.now() + conversation.disappearingSeconds * 1000)
+        : null;
 
       const message = await Message.create({
         conversationId,
@@ -20,13 +34,11 @@ export function registerMessageHandlers(io, socket) {
         mediaUrl: mediaUrl ?? null,
         mediaMeta: mediaMeta ?? null,
         replyToId: replyToId ?? null,
+        expiresAt,
       });
 
       await Conversation.update({ updatedAt: new Date() }, { where: { id: conversationId } });
 
-      const otherParticipants = await ConversationParticipant.findAll({
-        where: { conversationId },
-      });
       await MessageStatus.bulkCreate(
         otherParticipants
           .filter((p) => p.userId !== socket.userId)

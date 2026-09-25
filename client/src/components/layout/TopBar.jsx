@@ -29,12 +29,20 @@ export default function TopBar({ conversation }) {
   const avatarUser = isGroup ? { name: conversation.name, avatarColor: '#6b6255' } : displayUser;
   const status = isGroup
     ? `${conversation.participants.length} members`
-    : presence[displayUser?.id]?.status === 'online'
-      ? 'online'
-      : formatLastSeen(presence[displayUser?.id]?.lastSeenAt);
+    : conversation.messagingDisabled
+      ? ''
+      : presence[displayUser?.id]?.status === 'online'
+        ? 'online'
+        : formatLastSeen(presence[displayUser?.id]?.lastSeenAt);
 
-  const canCall = !isGroup && callPhase === 'idle';
-  const callTitle = isGroup ? 'Group calls are not supported yet' : callPhase !== 'idle' ? 'Already in a call' : undefined;
+  const canCall = !isGroup && callPhase === 'idle' && !conversation.messagingDisabled;
+  const callTitle = isGroup
+    ? 'Group calls are not supported yet'
+    : conversation.messagingDisabled
+      ? 'Calling is unavailable in this conversation'
+      : callPhase !== 'idle'
+        ? 'Already in a call'
+        : undefined;
 
   const call = (callType) => {
     if (!canCall) return;

@@ -1,31 +1,26 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
 
-export const ContactRequest = sequelize.define(
-  'ContactRequest',
+export const Block = sequelize.define(
+  'Block',
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    requesterId: {
+    blockerId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    addresseeId: {
+    blockedId: {
       type: DataTypes.UUID,
       allowNull: false,
-    },
-    status: {
-      type: DataTypes.ENUM('pending', 'accepted', 'blocked'),
-      allowNull: false,
-      defaultValue: 'pending',
     },
   },
   {
-    tableName: 'contact_requests',
+    tableName: 'blocks',
     timestamps: true,
-    indexes: [{ unique: true, fields: ['requesterId', 'addresseeId'] }],
+    indexes: [{ unique: true, fields: ['blockerId', 'blockedId'] }],
   }
 );

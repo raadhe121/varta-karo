@@ -3,7 +3,10 @@
     "allow": [
       "Bash(brew services *)",
       "Bash(mysql --version)",
-      "Bash(node *)"
+      "Bash(node *)",
+      "Bash(curl -s http://localhost:5173/)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

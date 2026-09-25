@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import Modal from '../common/Modal';
 import Button from '../common/Button';
 import Avatar from '../common/Avatar';
-import { fetchContacts } from '../../api/contacts.api';
+import { fetchMutualFollows } from '../../api/social.api';
 import { createConversation } from '../../api/chat.api';
 
 export default function NewGroupModal({ open, onClose, onCreated }) {
@@ -13,7 +13,7 @@ export default function NewGroupModal({ open, onClose, onCreated }) {
 
   useEffect(() => {
     if (open) {
-      fetchContacts().then(setContacts);
+      fetchMutualFollows().then(setContacts);
       setSelected(new Set());
       setName('');
     }
@@ -47,7 +47,7 @@ export default function NewGroupModal({ open, onClose, onCreated }) {
     <Modal open={open} onClose={onClose} title="New group">
       <form onSubmit={submit} className="space-y-3">
         <input className="input" placeholder="Group name" value={name} onChange={(e) => setName(e.target.value)} required />
-        <p className="text-xs text-ink-soft">Pick at least 2 contacts</p>
+        <p className="text-xs text-ink-soft">Pick at least 2 people who follow you back</p>
         <div className="max-h-56 overflow-y-auto flex flex-col gap-1">
           {contacts.map((user) => (
             <label key={user.id} className="flex items-center gap-3 px-2 py-1.5 rounded-xl hover:bg-paper-soft cursor-pointer">

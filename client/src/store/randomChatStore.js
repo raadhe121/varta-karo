@@ -8,7 +8,8 @@ import { create } from 'zustand';
 export const useRandomChatStore = create((set) => ({
   visible: false,
   sessionActive: false,
-  phase: 'idle', // idle | waiting | chatting
+  phase: 'idle', // idle | waiting | chatting | ended
+  endedBy: null, // 'self' | 'partner' | null
   partner: null,
   messages: [],
   requestState: 'none', // none | pending | sent
@@ -18,28 +19,32 @@ export const useRandomChatStore = create((set) => ({
   show: () => set({ visible: true }),
   hide: () => set({ visible: false }),
 
-  startSession: () => set({ sessionActive: true, visible: true, phase: 'idle' }),
+  startSession: () => set({ sessionActive: true, visible: true, phase: 'idle', endedBy: null }),
 
   setWaiting: () => set({ phase: 'waiting' }),
   setMatched: (partner) =>
-    set({ phase: 'chatting', partner, messages: [], requestState: 'none', hasPendingRequest: false, conversationId: null }),
+    set({ phase: 'chatting', partner, messages: [], requestState: 'none', hasPendingRequest: false, conversationId: null, endedBy: null }),
   addIncomingMessage: (text, at) =>
     set((s) => ({ messages: [...s.messages, { fromSelf: false, text, at }] })),
   addOwnMessage: (text) =>
     set((s) => ({ messages: [...s.messages, { fromSelf: true, text, at: new Date().toISOString() }] })),
-  partnerLeft: () => set({ phase: 'idle', partner: null, hasPendingRequest: false }),
+  // Chat ended for either party — whoever ended it ('self' or 'partner'),
+  // both sides land here so the widget can show a shared "chat ended" state
+  // instead of silently reverting to idle.
+  chatEnded: (endedBy) => set({ phase: 'ended', endedBy, hasPendingRequest: false }),
   setRequestState: (pending) => set({ requestState: pending ? 'pending' : 'sent' }),
   setPendingRequest: () => set({ hasPendingRequest: true }),
   setConversationId: (conversationId) => set({ conversationId }),
 
   resetForNext: () =>
-    set({ phase: 'waiting', partner: null, messages: [], requestState: 'none', hasPendingRequest: false, conversationId: null }),
+    set({ phase: 'waiting', partner: null, messages: [], requestState: 'none', hasPendingRequest: false, conversationId: null, endedBy: null }),
 
   endSession: () =>
     set({
       visible: false,
       sessionActive: false,
       phase: 'idle',
+      endedBy: null,
       partner: null,
       messages: [],
       requestState: 'none',

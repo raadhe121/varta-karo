@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../store/authStore';
 import { useAuth } from '../hooks/useAuth';
-import { updateMe } from '../api/contacts.api';
+import { updateMe } from '../api/users.api';
 import { fetchProfile } from '../api/social.api';
 import { uploadMedia } from '../api/chat.api';
+import { fetchBlockedUsers, unblockUser } from '../api/block.api';
 import Avatar from '../components/common/Avatar';
 import Button from '../components/common/Button';
 import Modal from '../components/common/Modal';
@@ -14,6 +15,7 @@ const SECTIONS = [
   { id: 'profile', label: 'Edit profile' },
   { id: 'privacy', label: 'Account privacy' },
   { id: 'notifications', label: 'Notifications' },
+  { id: 'blocked', label: 'Blocked accounts' },
 ];
 
 function linksToText(links) {
@@ -237,6 +239,59 @@ function NotificationsSection() {
   );
 }
 
+function BlockedAccountsSection() {
+  const [blocked, setBlocked] = useState(null);
+  const [unblockingId, setUnblockingId] = useState(null);
+
+  useEffect(() => {
+    fetchBlockedUsers().then(setBlocked);
+  }, []);
+
+  const unblock = async (userId) => {
+    setUnblockingId(userId);
+    try {
+      await unblockUser(userId);
+      setBlocked((prev) => prev.filter((u) => u.id !== userId));
+    } finally {
+      setUnblockingId(null);
+    }
+  };
+
+  return (
+    <div className="space-y-4 max-w-xl">
+      <p className="font-display font-semibold text-lg">Blocked accounts</p>
+      <p className="text-sm text-ink-soft">
+        Blocked people can't message you, call you, or start following you again.
+      </p>
+      {blocked === null ? (
+        <p className="text-sm text-ink-soft">Loading...</p>
+      ) : blocked.length === 0 ? (
+        <p className="text-sm text-ink-soft">You haven't blocked anyone.</p>
+      ) : (
+        <div className="divide-y divide-line rounded-xl border border-line overflow-hidden">
+          {blocked.map((user) => (
+            <div key={user.id} className="flex items-center gap-3 px-4 py-3">
+              <Avatar user={user} size="sm" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{user.name}</p>
+                <p className="text-xs text-ink-soft truncate">@{user.username}</p>
+              </div>
+              <Button
+                variant="outline"
+                className="text-xs px-3 py-1.5"
+                disabled={unblockingId === user.id}
+                onClick={() => unblock(user.id)}
+              >
+                {unblockingId === user.id ? 'Unblocking...' : 'Unblock'}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function SettingsPage() {
   const myId = useAuthStore((s) => s.user?.id);
   const updateAuthUser = useAuthStore((s) => s.updateUser);
@@ -306,8 +361,10 @@ export default function SettingsPage() {
             <EditProfileSection profile={profile} onSaved={onSaved} />
           ) : section === 'privacy' ? (
             <PrivacySection profile={profile} onSaved={onSaved} />
-          ) : (
+          ) : section === 'notifications' ? (
             <NotificationsSection />
+          ) : (
+            <BlockedAccountsSection />
           )}
         </main>
       </div>

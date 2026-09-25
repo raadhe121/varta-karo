@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import Button from '../components/common/Button';
+import GoogleSignInButton from '../components/auth/GoogleSignInButton';
 
 function AtIcon() {
   return (
@@ -219,6 +220,8 @@ function OtpLogin() {
 
 export default function LoginPage() {
   const [tab, setTab] = useState('password');
+  const [googleError, setGoogleError] = useState('');
+  const navigate = useNavigate();
 
   return (
     <div className="min-h-screen relative overflow-hidden">
@@ -277,6 +280,18 @@ export default function LoginPage() {
               </div>
 
               {tab === 'password' ? <PasswordLogin /> : <OtpLogin />}
+
+              <div className="flex items-center gap-3 my-5">
+                <span className="h-px flex-1 bg-line" />
+                <span className="text-xs text-ink-soft">or</span>
+                <span className="h-px flex-1 bg-line" />
+              </div>
+
+              <GoogleSignInButton
+                onSuccess={() => navigate('/feed')}
+                onError={(err) => setGoogleError(err.message)}
+              />
+              {googleError && <p className="text-sm text-red-600 mt-2 text-center">{googleError}</p>}
             </div>
 
             <div className="px-8 py-4 border-t border-line flex items-center justify-between text-sm">

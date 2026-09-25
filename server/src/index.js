@@ -6,21 +6,23 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import { Server } from 'socket.io';
 
+import { DataTypes } from 'sequelize';
 import { env } from './config/env.js';
 import { sequelize } from './models/index.js';
 import { attachSocket } from './socket/index.js';
+import { startDisappearingMessagesSweep } from './services/disappearingMessages.service.js';
 
 import authRoutes from './routes/auth.routes.js';
 import userRoutes from './routes/user.routes.js';
-import contactRoutes from './routes/contact.routes.js';
 import conversationRoutes from './routes/conversation.routes.js';
 import mediaRoutes from './routes/media.routes.js';
-import friendRoutes from './routes/friend.routes.js';
 import followRoutes from './routes/follow.routes.js';
+import blockRoutes from './routes/block.routes.js';
 import postRoutes from './routes/post.routes.js';
 import notificationRoutes from './routes/notification.routes.js';
 import storyRoutes from './routes/story.routes.js';
 import callRoutes from './routes/call.routes.js';
+import communityRoutes from './routes/community.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -32,15 +34,15 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 app.get('/api/health', (_req, res) => res.json({ ok: true }));
 app.use('/api/auth', authRoutes);
 app.use('/api/users', userRoutes);
-app.use('/api/contacts', contactRoutes);
 app.use('/api/conversations', conversationRoutes);
 app.use('/api/media', mediaRoutes);
-app.use('/api/friends', friendRoutes);
 app.use('/api/follow', followRoutes);
+app.use('/api/blocks', blockRoutes);
 app.use('/api/posts', postRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/calls', callRoutes);
+app.use('/api/communities', communityRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -53,6 +55,7 @@ const io = new Server(httpServer, {
 });
 attachSocket(io);
 app.set('io', io);
+startDisappearingMessagesSweep(io);
 
 async function start() {
   try {
@@ -64,6 +67,47 @@ async function start() {
     // happened on `users`). Add real migrations instead if schema changes are needed
     // against an existing database.
     await sequelize.sync();
+
+    // sync() (without { alter: true }) only creates missing tables, not
+    // missing columns on tables that already exist — so newly added columns
+    // on pre-existing tables (like `googleId` for Google sign-in) need a
+    // one-off manual add. Cheap and idempotent: skip if it's already there.
+    const usersTable = await sequelize.getQueryInterface().describeTable('users');
+    if (!usersTable.googleId) {
+      await sequelize.getQueryInterface().addColumn('users', 'googleId', {
+        type: DataTypes.STRING,
+        allowNull: true,
+        unique: true,
+      });
+    }
+
+    // Same one-off-add pattern for block/mute/disappearing-messages columns
+    // added to pre-existing tables.
+    const conversationsTable = await sequelize.getQueryInterface().describeTable('conversations');
+    if (!conversationsTable.disappearingSeconds) {
+      await sequelize.getQueryInterface().addColumn('conversations', 'disappearingSeconds', {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+      });
+    }
+
+    const participantsTable = await sequelize.getQueryInterface().describeTable('conversation_participants');
+    if (!participantsTable.muted) {
+      await sequelize.getQueryInterface().addColumn('conversation_participants', 'muted', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+    }
+
+    const messagesTable = await sequelize.getQueryInterface().describeTable('messages');
+    if (!messagesTable.expiresAt) {
+      await sequelize.getQueryInterface().addColumn('messages', 'expiresAt', {
+        type: DataTypes.DATE,
+        allowNull: true,
+      });
+    }
+
     console.log('Database connected and synced.');
   } catch (err) {
     console.error('Failed to connect to the database:', err.message);

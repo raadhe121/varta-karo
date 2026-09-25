@@ -40,6 +40,13 @@ export const Message = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    // Set when the conversation has disappearing messages on at send time;
+    // a background sweep (services/disappearingMessages.service.js)
+    // soft-deletes messages once this passes.
+    expiresAt: {
+      type: DataTypes.DATE,
+      allowNull: true,
+    },
   },
   {
     tableName: 'messages',

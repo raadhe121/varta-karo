@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useRandomChatStore } from '../../store/randomChatStore';
-import { nextRandomChat, sendRandomFriendRequest, sendRandomMessage, endRandomChat } from '../../random/randomChatClient';
+import { nextRandomChat, sendRandomFriendRequest, sendRandomMessage, endRandomChat, closeRandomChat } from '../../random/randomChatClient';
 import Avatar from '../common/Avatar';
 
 /** Floating Messenger-style popup for a live random-chat session — purely
@@ -11,6 +11,7 @@ import Avatar from '../common/Avatar';
 export default function RandomChatWidget() {
   const visible = useRandomChatStore((s) => s.visible);
   const phase = useRandomChatStore((s) => s.phase);
+  const endedBy = useRandomChatStore((s) => s.endedBy);
   const partner = useRandomChatStore((s) => s.partner);
   const messages = useRandomChatStore((s) => s.messages);
   const requestState = useRandomChatStore((s) => s.requestState);
@@ -21,10 +22,17 @@ export default function RandomChatWidget() {
 
   const bodyRef = useRef(null);
   const [text, setText] = useState('');
+  // 'next' | 'end' | null — briefly disables the triggering button and shows
+  // a spinner so these actions read as deliberate rather than instant.
+  const [busyAction, setBusyAction] = useState(null);
 
   useEffect(() => {
     bodyRef.current?.scrollTo({ top: bodyRef.current.scrollHeight });
   }, [messages]);
+
+  useEffect(() => {
+    setBusyAction(null);
+  }, [phase]);
 
   if (!visible) return null;
 
@@ -35,6 +43,15 @@ export default function RandomChatWidget() {
     sendRandomMessage(trimmed);
     setText('');
   };
+
+  const runWithDelay = (action, key) => {
+    if (busyAction) return;
+    setBusyAction(key);
+    setTimeout(action, 700);
+  };
+
+  const handleNextChat = () => runWithDelay(nextRandomChat, 'next');
+  const handleEndChat = () => runWithDelay(endRandomChat, 'end');
 
   const openConversation = () => {
     hide();
@@ -47,9 +64,19 @@ export default function RandomChatWidget() {
         <div className="flex items-center gap-2.5 min-w-0">
           <Avatar user={partner?.isGuest ? { name: partner.name } : { name: 'Stranger' }} size="sm" />
           <div className="min-w-0">
-            <p className="text-sm font-semibold truncate">{phase === 'idle' ? 'Random Chat' : partner?.name || 'Waiting...'}</p>
+            <p className="text-sm font-semibold truncate">
+              {phase === 'ended' ? partner?.name || 'Random Chat' : phase === 'idle' ? 'Random Chat' : partner?.name || 'Waiting...'}
+            </p>
             <p className="text-xs text-ink-soft">
-              {phase === 'waiting' ? 'Finding someone...' : phase === 'chatting' ? (partner?.isGuest ? 'Anonymous' : 'Has an account') : ''}
+              {phase === 'waiting'
+                ? 'Finding someone...'
+                : phase === 'chatting'
+                  ? partner?.isGuest
+                    ? 'Anonymous'
+                    : 'Has an account'
+                  : phase === 'ended'
+                    ? 'Chat ended'
+                    : ''}
             </p>
           </div>
         </div>
@@ -92,7 +119,33 @@ export default function RandomChatWidget() {
             </div>
           </div>
         ))}
+        {phase === 'ended' && (
+          <div className="flex justify-center mt-2">
+            <span className="text-xs font-medium text-ink-soft bg-paper-soft rounded-full px-3 py-1">
+              {endedBy === 'self' ? 'You ended the chat' : 'Your chat partner ended the chat'}
+            </span>
+          </div>
+        )}
       </div>
+
+      {phase === 'ended' && (
+        <div className="flex items-center justify-center gap-3 px-3 py-3 border-t border-line bg-paper-soft/60 text-xs font-semibold">
+          {busyAction === 'next' ? (
+            <span className="flex items-center gap-1.5 text-accent">
+              <span className="h-3 w-3 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+              Finding someone...
+            </span>
+          ) : (
+            <button onClick={handleNextChat} disabled={!!busyAction} className="text-accent disabled:opacity-50">
+              New Chat
+            </button>
+          )}
+          <span className="text-line">|</span>
+          <button onClick={closeRandomChat} disabled={!!busyAction} className="text-ink-soft disabled:opacity-50">
+            Close
+          </button>
+        </div>
+      )}
 
       {phase === 'chatting' && (
         <>
@@ -116,12 +169,26 @@ export default function RandomChatWidget() {
             {requestState === 'sent' && <span className="text-ink-soft">Request sent</span>}
             {requestState === 'pending' && <span className="text-ink-soft">Waiting for sign-up</span>}
             <span className="text-line">|</span>
-            <button onClick={nextRandomChat} className="text-accent">
-              New Chat
+            <button onClick={handleNextChat} disabled={!!busyAction} className="text-accent disabled:opacity-50">
+              {busyAction === 'next' ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                  New Chat
+                </span>
+              ) : (
+                'New Chat'
+              )}
             </button>
             <span className="text-line">|</span>
-            <button onClick={endRandomChat} className="text-ink-soft">
-              End Chat
+            <button onClick={handleEndChat} disabled={!!busyAction} className="text-ink-soft disabled:opacity-50">
+              {busyAction === 'end' ? (
+                <span className="flex items-center gap-1.5">
+                  <span className="h-3 w-3 rounded-full border-2 border-ink-soft border-t-transparent animate-spin" />
+                  Ending...
+                </span>
+              ) : (
+                'End Chat'
+              )}
             </button>
           </div>
         </>

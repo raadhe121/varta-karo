@@ -43,7 +43,7 @@ export default function ChatPage() {
               <TopBar conversation={activeConversation} />
               <MessageList conversationId={activeConversation.id} isGroup={activeConversation.type === 'group'} />
               <TypingIndicator conversationId={activeConversation.id} />
-              <MessageInput conversationId={activeConversation.id} />
+              <MessageInput conversationId={activeConversation.id} disabled={activeConversation.messagingDisabled} />
             </>
           ) : (
             <div className="flex-1 flex items-center justify-center text-ink-soft">

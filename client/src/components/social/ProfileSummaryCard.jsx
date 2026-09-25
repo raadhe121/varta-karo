@@ -26,10 +26,10 @@ export default function ProfileSummaryCard() {
       {profile && (
         <div className="flex gap-4 text-sm text-ink-soft mt-3 pt-3 border-t border-line">
           <span>
-            <strong className="text-ink">{profile.friendCount}</strong> friends
+            <strong className="text-ink">{profile.followerCount}</strong> followers
           </span>
           <span>
-            <strong className="text-ink">{profile.followerCount}</strong> followers
+            <strong className="text-ink">{profile.followingCount}</strong> following
           </span>
         </div>
       )}

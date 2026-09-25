@@ -1,31 +1,31 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
 
-export const FriendRequest = sequelize.define(
-  'FriendRequest',
+export const CommunityMember = sequelize.define(
+  'CommunityMember',
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    requesterId: {
+    communityId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    addresseeId: {
+    userId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    status: {
-      type: DataTypes.ENUM('pending', 'accepted', 'declined'),
+    role: {
+      type: DataTypes.ENUM('admin', 'member'),
       allowNull: false,
-      defaultValue: 'pending',
+      defaultValue: 'member',
     },
   },
   {
-    tableName: 'friend_requests',
+    tableName: 'community_members',
     timestamps: true,
-    indexes: [{ unique: true, fields: ['requesterId', 'addresseeId'] }],
+    indexes: [{ unique: true, fields: ['communityId', 'userId'] }],
   }
 );

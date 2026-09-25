@@ -26,6 +26,11 @@ export const ConversationParticipant = sequelize.define(
       type: DataTypes.UUID,
       allowNull: true,
     },
+    muted: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   },
   {
     tableName: 'conversation_participants',

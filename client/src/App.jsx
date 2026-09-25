@@ -8,6 +8,7 @@ import ChatPage from './pages/ChatPage';
 import ProfilePage from './pages/ProfilePage';
 import FeedPage from './pages/FeedPage';
 import CommunitiesPage from './pages/CommunitiesPage';
+import CommunityDetailPage from './pages/CommunityDetailPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import GuidelinesPage from './pages/GuidelinesPage';
@@ -98,6 +99,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <CommunitiesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/communities/:id"
+          element={
+            <ProtectedRoute>
+              <CommunityDetailPage />
             </ProtectedRoute>
           }
         />

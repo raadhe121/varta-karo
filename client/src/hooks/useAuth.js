@@ -18,6 +18,10 @@ export function useAuth() {
 
   const register = useCallback((payload) => authApi.registerAccount(payload).then(applyAuth(true)), [applyAuth]);
   const login = useCallback((payload, remember = true) => authApi.login(payload).then(applyAuth(remember)), [applyAuth]);
+  const googleLogin = useCallback(
+    (idToken, remember = true) => authApi.googleLogin(idToken).then(applyAuth(remember)),
+    [applyAuth]
+  );
   const requestOtp = useCallback((phone) => authApi.requestOtp(phone), []);
   const verifyOtp = useCallback(
     (phone, code, remember = true) => authApi.verifyOtp(phone, code).then(applyAuth(remember)),
@@ -38,6 +42,7 @@ export function useAuth() {
     isAuthenticated: Boolean(user),
     register,
     login,
+    googleLogin,
     requestOtp,
     verifyOtp,
     logout,

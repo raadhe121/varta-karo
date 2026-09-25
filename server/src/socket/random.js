@@ -1,21 +1,20 @@
 import { randomUUID } from 'crypto';
-import { Op } from 'sequelize';
 import { verifyAccessToken } from '../services/token.service.js';
-import { User, FriendRequest } from '../models/index.js';
+import { User, Follow } from '../models/index.js';
 import { createNotification } from '../services/notification.service.js';
 import { getOrCreateDirectConversation } from '../services/conversation.service.js';
 
 // In-memory only, by design — random-chat pairing and its messages are
 // ephemeral (never written to the DB); the only thing that survives a
-// session is a friend request + conversation created once a "connect" is
+// session is a mutual follow + conversation created once a "connect" is
 // actually fulfilled between two real accounts.
 const queue = []; // socket ids waiting to be matched
 const rooms = new Map(); // roomId -> { members: [socketId, socketId], pendingRequestFrom: userId|null }
 
 // Random-chat identity is anonymous in both directions, regardless of
 // whether either side has an account — a logged-in user's real name/avatar/
-// userId must not leak to their stranger until a friend request is actually
-// accepted (at which point the resulting real conversation shows their real
+// userId must not leak to their stranger until a "connect" is actually
+// fulfilled (at which point the resulting real conversation shows their real
 // profile, same as any other chat). `isGuest` is still exposed so the UI can
 // say "has an account" vs "anonymous", without saying which account.
 function identityOf(socket) {
@@ -37,8 +36,8 @@ function partnerSocketOf(nsp, socket) {
 function teardownRoom(nsp, socket, reason) {
   const room = roomOf(socket);
   if (!room) return;
-  rooms.delete(socket.data.roomId);
   const partner = partnerSocketOf(nsp, socket);
+  rooms.delete(socket.data.roomId);
   socket.data.roomId = null;
   if (partner) {
     partner.data.roomId = null;
@@ -153,8 +152,10 @@ export function attachRandomChat(io) {
       if (!room || !partner) return;
 
       if (!partner.isGuest) {
-        await sendOrReuseFriendRequest(io, socket.userId, partner.userId);
-        socket.emit('random:request-sent', { pending: false });
+        const conversation = await connectViaFollow(io, socket.userId, partner.userId);
+        const payloadOut = { conversationId: conversation?.id };
+        socket.emit('random:friend-added', payloadOut);
+        partner.emit('random:friend-added', payloadOut);
         return;
       }
 
@@ -186,7 +187,7 @@ export function attachRandomChat(io) {
       const room = roomOf(socket);
       const partner = partnerSocketOf(nsp, socket);
       if (room && room.pendingRequestFrom && room.pendingRequestFrom !== user.id) {
-        const conversation = await sendOrReuseFriendRequest(io, room.pendingRequestFrom, user.id, { autoAccept: true });
+        const conversation = await connectViaFollow(io, room.pendingRequestFrom, user.id);
         const payloadOut = { conversationId: conversation?.id };
         socket.emit('random:friend-added', payloadOut);
         partner?.emit('random:friend-added', payloadOut);
@@ -201,28 +202,17 @@ export function attachRandomChat(io) {
   });
 }
 
-async function sendOrReuseFriendRequest(io, requesterId, addresseeId, { autoAccept = false } = {}) {
-  let request = await FriendRequest.findOne({
-    where: {
-      [Op.or]: [
-        { requesterId, addresseeId },
-        { requesterId: addresseeId, addresseeId: requesterId },
-      ],
-    },
-  });
-
-  if (!request) {
-    request = await FriendRequest.create({ requesterId, addresseeId, status: autoAccept ? 'accepted' : 'pending' });
-    if (!autoAccept) {
-      await createNotification({ recipientId: addresseeId, actorId: requesterId, type: 'friend_request' }, io);
-    }
-  } else if (autoAccept && request.status !== 'accepted') {
-    request.status = 'accepted';
-    await request.save();
-  }
-
-  if (request.status !== 'accepted') return null;
-
-  await createNotification({ recipientId: requesterId, actorId: addresseeId, type: 'friend_accepted' }, io).catch(() => {});
-  return getOrCreateDirectConversation(io, requesterId, addresseeId);
+// "Connecting" out of a random chat means both sides follow each other
+// immediately — no separate request/accept step — then opens the resulting
+// direct conversation, same relationship primitive used everywhere else.
+async function connectViaFollow(io, userIdA, userIdB) {
+  await Promise.all([
+    Follow.findOrCreate({ where: { followerId: userIdA, followingId: userIdB } }),
+    Follow.findOrCreate({ where: { followerId: userIdB, followingId: userIdA } }),
+  ]);
+  await Promise.all([
+    createNotification({ recipientId: userIdB, actorId: userIdA, type: 'follow' }, io).catch(() => {}),
+    createNotification({ recipientId: userIdA, actorId: userIdB, type: 'follow' }, io).catch(() => {}),
+  ]);
+  return getOrCreateDirectConversation(io, userIdA, userIdB);
 }

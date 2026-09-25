@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { fetchFeed } from '../api/posts.api';
-import { searchUsers } from '../api/contacts.api';
+import { searchUsers } from '../api/users.api';
 import Avatar from '../components/common/Avatar';
 
 /** Ports the mobile app's explore-grid-then-search-results screen: an empty

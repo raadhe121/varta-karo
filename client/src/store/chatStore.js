@@ -95,5 +95,20 @@ export const useChatStore = create((set, get) => ({
       return { typingByConversation: { ...state.typingByConversation, [conversationId]: Array.from(current) } };
     }),
 
+  removeMessage: (conversationId, messageId) =>
+    set((state) => ({
+      messagesByConversation: {
+        ...state.messagesByConversation,
+        [conversationId]: (state.messagesByConversation[conversationId] || []).filter((m) => m.id !== messageId),
+      },
+    })),
+
+  // Local patch for server-pushed conversation-level settings (mute,
+  // disappearing messages) so the UI updates without a full refetch.
+  updateConversationMeta: (conversationId, patch) =>
+    set((state) => ({
+      conversations: state.conversations.map((c) => (c.id === conversationId ? { ...c, ...patch } : c)),
+    })),
+
   reset: () => set({ conversations: [], activeConversationId: null, messagesByConversation: {}, typingByConversation: {} }),
 }));

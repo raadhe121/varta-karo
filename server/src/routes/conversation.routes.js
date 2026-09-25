@@ -8,6 +8,8 @@ router.use(requireAuth);
 router.get('/', conversationController.listConversations);
 router.post('/', conversationController.createConversation);
 router.patch('/:id', conversationController.updateConversation);
+router.patch('/:id/mute', conversationController.setMuted);
+router.patch('/:id/disappearing', conversationController.setDisappearing);
 router.post('/:id/participants', conversationController.addParticipants);
 router.get('/:id/messages', conversationController.getMessages);
 

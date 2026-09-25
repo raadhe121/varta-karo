@@ -35,7 +35,11 @@ export default function ConversationItem({ conversation, active, onClick }) {
         active ? 'bg-accent-soft/40' : 'hover:bg-paper-soft'
       }`}
     >
-      <Avatar user={avatarUser} showStatus={conversation.type === 'direct'} isOnline={isOnline(displayUser?.id)} />
+      <Avatar
+        user={avatarUser}
+        showStatus={conversation.type === 'direct' && !conversation.messagingDisabled}
+        isOnline={isOnline(displayUser?.id)}
+      />
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2">
           <p className="font-medium text-sm truncate">{title}</p>

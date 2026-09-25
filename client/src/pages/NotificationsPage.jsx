@@ -7,21 +7,13 @@ import { fetchNotifications, markAllNotificationsRead } from '../api/notificatio
 import { useNotificationStore } from '../store/notificationStore';
 
 const TYPE_TEXT = {
-  friend_request: 'sent you a friend request',
-  friend_accepted: 'accepted your friend request',
   follow: 'started following you',
-  contact_request: 'wants to add you as a contact',
-  contact_accepted: 'accepted your contact request',
   like: 'liked your post',
   comment: 'commented on your post',
 };
 
 const TYPE_LINK = {
-  friend_request: (n) => `/profile/${n.actor.id}`,
-  friend_accepted: (n) => `/profile/${n.actor.id}`,
   follow: (n) => `/profile/${n.actor.id}`,
-  contact_request: () => '/chat',
-  contact_accepted: () => '/chat',
   like: () => '/profile',
   comment: () => '/profile',
 };
@@ -56,31 +48,33 @@ export default function NotificationsPage() {
           <div className="flex justify-center py-8">
             <Spinner />
           </div>
-        ) : items.length === 0 ? (
+        ) : items.filter((n) => TYPE_LINK[n.type]).length === 0 ? (
           <p className="text-ink-soft text-center py-8">
-            Nothing here yet. Likes, comments, and friend requests will show up here.
+            Nothing here yet. Likes, comments, and new followers will show up here.
           </p>
         ) : (
           <div className="space-y-2">
-            {items.map((n) => (
-              <Link
-                key={n.id}
-                to={TYPE_LINK[n.type](n)}
-                className={`flex items-center gap-3 rounded-2xl p-3 shadow-sm shadow-ink/5 transition-colors ${
-                  n.read ? 'bg-paper' : 'bg-accent-soft/40'
-                }`}
-              >
-                <Avatar user={n.actor} size="sm" />
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm">
-                    <span className="font-semibold">{n.actor.name}</span> {TYPE_TEXT[n.type]}
-                    {n.postSummary && <span className="text-ink-soft"> &mdash; &ldquo;{n.postSummary}&rdquo;</span>}
-                  </p>
-                  <p className="text-xs text-ink-soft">{timeAgo(n.createdAt)}</p>
-                </div>
-                {!n.read && <span className="h-2 w-2 rounded-full bg-accent shrink-0" />}
-              </Link>
-            ))}
+            {items
+              .filter((n) => TYPE_LINK[n.type])
+              .map((n) => (
+                <Link
+                  key={n.id}
+                  to={TYPE_LINK[n.type](n)}
+                  className={`flex items-center gap-3 rounded-2xl p-3 shadow-sm shadow-ink/5 transition-colors ${
+                    n.read ? 'bg-paper' : 'bg-accent-soft/40'
+                  }`}
+                >
+                  <Avatar user={n.actor} size="sm" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">
+                      <span className="font-semibold">{n.actor.name}</span> {TYPE_TEXT[n.type]}
+                      {n.postSummary && <span className="text-ink-soft"> &mdash; &ldquo;{n.postSummary}&rdquo;</span>}
+                    </p>
+                    <p className="text-xs text-ink-soft">{timeAgo(n.createdAt)}</p>
+                  </div>
+                  {!n.read && <span className="h-2 w-2 rounded-full bg-accent shrink-0" />}
+                </Link>
+              ))}
           </div>
         )}
       </div>

@@ -1,6 +1,6 @@
 import { Op } from 'sequelize';
-import { User, FriendRequest, Follow, Post, Like, Comment } from '../models/index.js';
-import { canView, isFriend, getFriendIds } from '../services/visibility.service.js';
+import { User, Follow, Block, Post, Like, Comment } from '../models/index.js';
+import { canView } from '../services/visibility.service.js';
 
 function publicUser(user) {
   const { id, name, username, email, phone, avatarUrl, avatarColor, bio, status, lastSeenAt } = user;
@@ -78,12 +78,9 @@ export async function searchUsers(req, res) {
 export async function getSuggestions(req, res) {
   const limit = Math.min(Number(req.query.limit) || 8, 20);
 
-  const [myFriendIds, followingRows] = await Promise.all([
-    getFriendIds(req.userId),
-    Follow.findAll({ where: { followerId: req.userId } }),
-  ]);
-  const myFriendIdSet = new Set(myFriendIds);
-  const excludeIds = [req.userId, ...followingRows.map((f) => f.followingId)];
+  const followingRows = await Follow.findAll({ where: { followerId: req.userId } });
+  const myFollowingIds = followingRows.map((f) => f.followingId);
+  const excludeIds = [req.userId, ...myFollowingIds];
 
   const candidates = await User.findAll({
     where: { id: { [Op.notIn]: excludeIds } },
@@ -93,39 +90,24 @@ export async function getSuggestions(req, res) {
   if (candidates.length === 0) return res.json([]);
 
   const candidateIdSet = new Set(candidates.map((c) => c.id));
-  const friendRows = await FriendRequest.findAll({
-    where: {
-      status: 'accepted',
-      [Op.or]: [
-        { requesterId: { [Op.in]: [...candidateIdSet] } },
-        { addresseeId: { [Op.in]: [...candidateIdSet] } },
-      ],
-    },
-  });
 
-  // candidateId -> set of that candidate's friend ids, so we can rank
-  // suggestions by how many friends they have in common with the viewer.
-  const friendsOf = new Map();
-  for (const row of friendRows) {
-    if (candidateIdSet.has(row.requesterId)) {
-      if (!friendsOf.has(row.requesterId)) friendsOf.set(row.requesterId, new Set());
-      friendsOf.get(row.requesterId).add(row.addresseeId);
-    }
-    if (candidateIdSet.has(row.addresseeId)) {
-      if (!friendsOf.has(row.addresseeId)) friendsOf.set(row.addresseeId, new Set());
-      friendsOf.get(row.addresseeId).add(row.requesterId);
-    }
+  // Rank by how many people the viewer already follows also follow this
+  // candidate — a "followed by people you follow" signal, now that Follow is
+  // the only relationship graph (no separate accepted-friends graph).
+  const overlapRows =
+    myFollowingIds.length > 0
+      ? await Follow.findAll({
+          where: { followerId: { [Op.in]: myFollowingIds }, followingId: { [Op.in]: [...candidateIdSet] } },
+        })
+      : [];
+
+  const mutualCounts = new Map();
+  for (const row of overlapRows) {
+    mutualCounts.set(row.followingId, (mutualCounts.get(row.followingId) || 0) + 1);
   }
 
   const ranked = candidates
-    .map((user) => {
-      const theirFriends = friendsOf.get(user.id) || new Set();
-      let mutualCount = 0;
-      for (const friendId of theirFriends) {
-        if (myFriendIdSet.has(friendId)) mutualCount += 1;
-      }
-      return { user, mutualCount };
-    })
+    .map((user) => ({ user, mutualCount: mutualCounts.get(user.id) || 0 }))
     .sort((a, b) => b.mutualCount - a.mutualCount)
     .slice(0, limit);
 
@@ -135,7 +117,7 @@ export async function getSuggestions(req, res) {
       mutualCount,
       note:
         mutualCount > 0
-          ? `Friends with ${mutualCount} ${mutualCount === 1 ? 'person' : 'people'} you know`
+          ? `Followed by ${mutualCount} ${mutualCount === 1 ? 'person' : 'people'} you follow`
           : 'New to VartaKaro',
     }))
   );
@@ -146,22 +128,38 @@ export async function getProfile(req, res) {
   const user = await User.findByPk(id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const [friendCount, followerCount, followingCount, friend, following, pendingRequest] = await Promise.all([
-    FriendRequest.count({ where: { status: 'accepted', [Op.or]: [{ requesterId: id }, { addresseeId: id }] } }),
+  const [followerCount, followingCount, following, followedBy, blocked, blockedByOwner] = await Promise.all([
     Follow.count({ where: { followingId: id } }),
     Follow.count({ where: { followerId: id } }),
-    isFriend(req.userId, id),
     Follow.findOne({ where: { followerId: req.userId, followingId: id } }),
-    FriendRequest.findOne({
-      where: {
-        status: 'pending',
-        [Op.or]: [
-          { requesterId: req.userId, addresseeId: id },
-          { requesterId: id, addresseeId: req.userId },
-        ],
-      },
-    }),
+    Follow.findOne({ where: { followerId: id, followingId: req.userId } }),
+    req.userId === id ? null : Block.findOne({ where: { blockerId: req.userId, blockedId: id } }),
+    req.userId === id ? null : Block.findOne({ where: { blockerId: id, blockedId: req.userId } }),
   ]);
+
+  // The owner blocked the viewer — hide everything real about them, same
+  // treatment as their anonymized entry in a shared conversation.
+  if (blockedByOwner) {
+    return res.json({
+      id: user.id,
+      name: 'Unknown User',
+      username: null,
+      avatarUrl: null,
+      avatarColor: '#9CA3AF',
+      coverPhotoUrl: null,
+      bio: null,
+      status: 'offline',
+      lastSeenAt: null,
+      isSelf: false,
+      isFollowing: false,
+      isFollowedBy: false,
+      isBlocked: Boolean(blocked),
+      blockedByOther: true,
+      followerCount: 0,
+      followingCount: 0,
+      about: null,
+    });
+  }
 
   const showAbout = await canView(user.profileVisibility, req.userId, id);
 
@@ -176,12 +174,10 @@ export async function getProfile(req, res) {
     status: user.status,
     lastSeenAt: user.lastSeenAt,
     isSelf: req.userId === id,
-    isFriend: friend,
     isFollowing: Boolean(following),
-    hasPendingFriendRequest: pendingRequest
-      ? { id: pendingRequest.id, direction: pendingRequest.requesterId === req.userId ? 'outgoing' : 'incoming' }
-      : null,
-    friendCount,
+    isFollowedBy: Boolean(followedBy),
+    isBlocked: Boolean(blocked),
+    blockedByOther: false,
     followerCount,
     followingCount,
     profileVisibility: req.userId === id ? user.profileVisibility : undefined,

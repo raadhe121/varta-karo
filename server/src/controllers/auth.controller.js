@@ -1,9 +1,12 @@
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
+import { OAuth2Client } from 'google-auth-library';
 import { User, OtpCode } from '../models/index.js';
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../services/token.service.js';
 import { sendOtpCode } from '../services/otp.service.js';
 import { env } from '../config/env.js';
+
+const googleClient = new OAuth2Client(env.google.clientId);
 
 function publicUser(user) {
   const { id, name, username, email, phone, avatarUrl, avatarColor, bio, status, lastSeenAt } = user;
@@ -21,8 +24,13 @@ function issueTokens(user) {
 export async function register(req, res) {
   const { name, username, email, password, phone } = req.body;
 
-  if (!name || !username || !password) {
-    return res.status(400).json({ message: 'name, username and password are required' });
+  // Username is the only hard requirement — a quick "just pick a handle"
+  // signup (no password) is supported alongside the full form. An account
+  // created this way has no passwordHash, so it can't use /auth/login later;
+  // it stays signed in via the refresh token issued here, same as the
+  // anonymous random-chat flow this mirrors.
+  if (!username) {
+    return res.status(400).json({ message: 'username is required' });
   }
 
   const existing = await User.findOne({
@@ -34,8 +42,8 @@ export async function register(req, res) {
     return res.status(409).json({ message: 'Username, email or phone already in use' });
   }
 
-  const passwordHash = await bcrypt.hash(password, 10);
-  const user = await User.create({ name, username, email, phone, passwordHash });
+  const passwordHash = password ? await bcrypt.hash(password, 10) : null;
+  const user = await User.create({ name: name || username, username, email, phone, passwordHash });
 
   return res.status(201).json(issueTokens(user));
 }
@@ -92,6 +100,61 @@ export async function refresh(req, res) {
 export async function logout(_req, res) {
   // Stateless JWTs: nothing to invalidate server-side for this MVP.
   return res.status(204).send();
+}
+
+async function uniqueUsernameFrom(seed) {
+  const base = seed.toLowerCase().replace(/[^a-z0-9]/g, '') || 'user';
+  let candidate = base;
+  let n = 0;
+  // eslint-disable-next-line no-await-in-loop
+  while (await User.findOne({ where: { username: candidate } })) {
+    n += 1;
+    candidate = `${base}${n}`;
+  }
+  return candidate;
+}
+
+export async function googleLogin(req, res) {
+  const { idToken } = req.body;
+  if (!idToken) {
+    return res.status(400).json({ message: 'idToken is required' });
+  }
+  if (!env.google.clientId) {
+    return res.status(500).json({ message: 'Google sign-in is not configured on the server' });
+  }
+
+  let payload;
+  try {
+    const ticket = await googleClient.verifyIdToken({ idToken, audience: env.google.clientId });
+    payload = ticket.getPayload();
+  } catch {
+    return res.status(401).json({ message: 'Invalid Google token' });
+  }
+
+  const { sub: googleId, email, name, picture, email_verified: emailVerified } = payload;
+
+  let user = await User.findOne({ where: { googleId } });
+
+  if (!user && email && emailVerified) {
+    user = await User.findOne({ where: { email } });
+    if (user && !user.googleId) {
+      user.googleId = googleId;
+      await user.save();
+    }
+  }
+
+  if (!user) {
+    const username = await uniqueUsernameFrom(email ? email.split('@')[0] : name || 'user');
+    user = await User.create({
+      name: name || username,
+      username,
+      email: emailVerified ? email : undefined,
+      googleId,
+      avatarUrl: picture || undefined,
+    });
+  }
+
+  return res.json(issueTokens(user));
 }
 
 export async function requestOtp(req, res) {

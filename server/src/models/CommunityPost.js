@@ -1,38 +1,38 @@
 import { DataTypes } from 'sequelize';
 import { sequelize } from '../config/db.js';
 
-export const Notification = sequelize.define(
-  'Notification',
+export const CommunityPost = sequelize.define(
+  'CommunityPost',
   {
     id: {
       type: DataTypes.UUID,
       defaultValue: DataTypes.UUIDV4,
       primaryKey: true,
     },
-    recipientId: {
+    communityId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    actorId: {
+    authorId: {
       type: DataTypes.UUID,
       allowNull: false,
     },
-    type: {
-      type: DataTypes.ENUM('follow', 'like', 'comment'),
-      allowNull: false,
-    },
-    postId: {
-      type: DataTypes.UUID,
+    content: {
+      type: DataTypes.TEXT,
       allowNull: true,
     },
-    read: {
-      type: DataTypes.BOOLEAN,
-      allowNull: false,
-      defaultValue: false,
+    imageUrl: {
+      type: DataTypes.STRING,
+      allowNull: true,
+    },
+    mediaType: {
+      type: DataTypes.ENUM('image', 'video'),
+      allowNull: true,
     },
   },
   {
-    tableName: 'notifications',
+    tableName: 'community_posts',
     timestamps: true,
+    paranoid: true,
   }
 );

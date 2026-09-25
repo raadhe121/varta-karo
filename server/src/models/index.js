@@ -1,13 +1,12 @@
 import { sequelize } from '../config/db.js';
 import { User } from './User.js';
 import { OtpCode } from './OtpCode.js';
-import { ContactRequest } from './ContactRequest.js';
 import { Conversation } from './Conversation.js';
 import { ConversationParticipant } from './ConversationParticipant.js';
 import { Message } from './Message.js';
 import { MessageStatus } from './MessageStatus.js';
-import { FriendRequest } from './FriendRequest.js';
 import { Follow } from './Follow.js';
+import { Block } from './Block.js';
 import { Post } from './Post.js';
 import { Like } from './Like.js';
 import { Save } from './Save.js';
@@ -17,6 +16,9 @@ import { Notification } from './Notification.js';
 import { Story } from './Story.js';
 import { StoryView } from './StoryView.js';
 import { CallLog } from './CallLog.js';
+import { Community } from './Community.js';
+import { CommunityMember } from './CommunityMember.js';
+import { CommunityPost } from './CommunityPost.js';
 
 // Conversation <-> User through ConversationParticipant
 Conversation.belongsToMany(User, {
@@ -45,17 +47,16 @@ Message.hasMany(MessageStatus, { foreignKey: 'messageId', as: 'statuses' });
 MessageStatus.belongsTo(Message, { foreignKey: 'messageId', as: 'message' });
 MessageStatus.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
-// Contact requests
-ContactRequest.belongsTo(User, { foreignKey: 'requesterId', as: 'requester' });
-ContactRequest.belongsTo(User, { foreignKey: 'addresseeId', as: 'addressee' });
-
-// Friends (separate graph from chat contacts)
-FriendRequest.belongsTo(User, { foreignKey: 'requesterId', as: 'requester' });
-FriendRequest.belongsTo(User, { foreignKey: 'addresseeId', as: 'addressee' });
-
-// Follows (one-way, no acceptance)
+// Follows (one-way; a mutual pair — each follows the other — is what the
+// rest of the app treats as "friends": chat eligibility, feed/story
+// visibility, etc. See services/visibility.service.js)
 Follow.belongsTo(User, { foreignKey: 'followerId', as: 'follower' });
 Follow.belongsTo(User, { foreignKey: 'followingId', as: 'following' });
+
+// Blocks (one-way; either side blocking the other severs the relationship —
+// see services/block.service.js)
+Block.belongsTo(User, { foreignKey: 'blockerId', as: 'blocker' });
+Block.belongsTo(User, { foreignKey: 'blockedId', as: 'blocked' });
 
 // Posts / likes / comments
 User.hasMany(Post, { foreignKey: 'authorId', as: 'posts' });
@@ -95,17 +96,26 @@ CallLog.belongsTo(User, { foreignKey: 'callerId', as: 'caller' });
 CallLog.belongsTo(User, { foreignKey: 'calleeId', as: 'callee' });
 CallLog.belongsTo(Conversation, { foreignKey: 'conversationId', as: 'conversation' });
 
+// Communities
+Community.belongsTo(User, { foreignKey: 'creatorId', as: 'creator' });
+Community.hasMany(CommunityMember, { foreignKey: 'communityId', as: 'members' });
+CommunityMember.belongsTo(Community, { foreignKey: 'communityId', as: 'community' });
+CommunityMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Community.hasMany(CommunityPost, { foreignKey: 'communityId', as: 'posts' });
+CommunityPost.belongsTo(Community, { foreignKey: 'communityId', as: 'community' });
+CommunityPost.belongsTo(User, { foreignKey: 'authorId', as: 'author' });
+
 export {
   sequelize,
   User,
   OtpCode,
-  ContactRequest,
   Conversation,
   ConversationParticipant,
   Message,
   MessageStatus,
-  FriendRequest,
   Follow,
+  Block,
   Post,
   Like,
   Save,
@@ -115,4 +125,7 @@ export {
   Story,
   StoryView,
   CallLog,
+  Community,
+  CommunityMember,
+  CommunityPost,
 };

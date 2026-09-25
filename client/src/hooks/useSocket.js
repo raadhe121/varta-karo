@@ -28,23 +28,29 @@ export function useSocket() {
     }
 
     const socket = getSocket() || connectSocket();
-    const { addMessage, setMessageStatus, setTyping, upsertConversation } = useChatStore.getState();
+    const { addMessage, removeMessage, setMessageStatus, setTyping, upsertConversation, updateConversationMeta } =
+      useChatStore.getState();
     const { setPresence } = usePresenceStore.getState();
     const { addNotification } = useNotificationStore.getState();
 
     const onMessageNew = (message) => addMessage(message.conversationId, message);
+    const onMessageDeleted = ({ conversationId, messageId }) => removeMessage(conversationId, messageId);
     const onMessageStatus = ({ conversationId, messageId, userId, status }) =>
       setMessageStatus(conversationId, messageId, userId, status);
     const onTypingUpdate = ({ conversationId, userId, isTyping }) => setTyping(conversationId, userId, isTyping);
     const onPresenceUpdate = ({ userId, status, lastSeenAt }) => setPresence(userId, status, lastSeenAt);
     const onConversationNew = (conversation) => upsertConversation(conversation);
+    const onConversationDisappearing = ({ conversationId, disappearingSeconds }) =>
+      updateConversationMeta(conversationId, { disappearingSeconds });
     const onNotificationNew = (notification) => addNotification(notification);
 
     socket.on('message:new', onMessageNew);
+    socket.on('message:deleted', onMessageDeleted);
     socket.on('message:status', onMessageStatus);
     socket.on('typing:update', onTypingUpdate);
     socket.on('presence:update', onPresenceUpdate);
     socket.on('conversation:new', onConversationNew);
+    socket.on('conversation:disappearing', onConversationDisappearing);
     socket.on('notification:new', onNotificationNew);
     socket.on('call:incoming', handleIncoming);
     socket.on('call:answered', handleAnswered);
@@ -60,10 +66,12 @@ export function useSocket() {
 
     return () => {
       socket.off('message:new', onMessageNew);
+      socket.off('message:deleted', onMessageDeleted);
       socket.off('message:status', onMessageStatus);
       socket.off('typing:update', onTypingUpdate);
       socket.off('presence:update', onPresenceUpdate);
       socket.off('conversation:new', onConversationNew);
+      socket.off('conversation:disappearing', onConversationDisappearing);
       socket.off('notification:new', onNotificationNew);
       socket.off('call:incoming', handleIncoming);
       socket.off('call:answered', handleAnswered);

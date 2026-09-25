@@ -25,6 +25,13 @@ export const Conversation = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    // Seconds a new message in this conversation lives before auto-deleting;
+    // null means disappearing messages are off. Applies conversation-wide
+    // (any participant can toggle it, like WhatsApp), not per-sender.
+    disappearingSeconds: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+    },
   },
   {
     tableName: 'conversations',
