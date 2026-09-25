@@ -37,7 +37,14 @@ export default function App() {
         <Route path="/register" element={<RegisterPage />} />
         <Route path="/forgot-password" element={<ForgotPasswordPage />} />
         <Route path="/guidelines" element={<GuidelinesPage />} />
-        <Route path="/random-chat" element={<RandomChatPage />} />
+        <Route
+          path="/random-chat"
+          element={
+            <ProtectedRoute>
+              <RandomChatPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="/chat"
           element={

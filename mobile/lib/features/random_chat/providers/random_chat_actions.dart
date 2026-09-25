@@ -36,10 +36,20 @@ class RandomChatActions {
 
     _subs.add(_socket.onWaiting.listen((_) => notifier.setWaiting()));
     _subs.add(_socket.onMatched.listen(notifier.setMatched));
-    _subs.add(_socket.onMessage.listen((m) => notifier.addIncomingMessage(m.text, m.at)));
-    _subs.add(_socket.onPartnerLeft.listen((_) => notifier.partnerLeft()));
+    _subs.add(
+      _socket.onMessage.listen(
+        (m) => notifier.addIncomingMessage(m.text, m.at),
+      ),
+    );
+    _subs.add(
+      _socket.onPartnerLeft.listen(
+        (_) => notifier.chatEnded(RandomChatEndedBy.partner),
+      ),
+    );
     _subs.add(_socket.onRequestSent.listen(notifier.setRequestState));
-    _subs.add(_socket.onPendingRequest.listen((_) => notifier.setPendingRequest()));
+    _subs.add(
+      _socket.onPendingRequest.listen((_) => notifier.setPendingRequest()),
+    );
     _subs.add(_socket.onFriendAdded.listen(notifier.setFriendAdded));
     _subs.add(_socket.onError.listen(notifier.setError));
   }
@@ -58,7 +68,17 @@ class RandomChatActions {
     _socket.next();
   }
 
+  /// Ends the current pairing but keeps the socket connected — the screen
+  /// shows a shared "chat ended" state (matching what the partner sees) with
+  /// the option to start a new chat, rather than closing outright.
   void leave() {
+    _socket.leave();
+    _ref.read(randomChatProvider.notifier).chatEnded(RandomChatEndedBy.self);
+  }
+
+  /// Fully closes the session (e.g. from the "ended" screen, or Cancel while
+  /// waiting) back to idle.
+  void close() {
     _socket.leave();
     _ref.read(randomChatProvider.notifier).reset();
   }
@@ -70,8 +90,13 @@ class RandomChatActions {
   /// account session app-wide, not just within this screen), then upgrades
   /// the still-connected random socket in place via `random:authenticate`
   /// so the chat isn't interrupted.
-  Future<void> authenticateAsGuest({required String identifier, required String password}) async {
-    final data = await _ref.read(authApiProvider).login(identifier: identifier, password: password);
+  Future<void> authenticateAsGuest({
+    required String identifier,
+    required String password,
+  }) async {
+    final data = await _ref
+        .read(authApiProvider)
+        .login(identifier: identifier, password: password);
     await _ref.read(authActionsProvider).applyExternalAuth(data);
     _socket.authenticate(data['accessToken'] as String);
   }

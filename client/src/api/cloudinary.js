@@ -1,14 +1,15 @@
-// Uploads go straight from the browser to Cloudinary, never through our
-// server -- keeps large image/video payloads off Render entirely, and off
-// its ephemeral disk (files stored there don't survive a redeploy).
+// Staging/production sets VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET,
+// so uploads go straight from the browser to Cloudinary and never touch the
+// backend's ephemeral disk. Local dev leaves those unset, so we fall back to
+// our own /api/media/upload endpoint, which stores the file under
+// server/src/uploads and serves it back at /uploads/....
+import { http } from './http';
+import { resolveMediaUrl } from '../utils/media';
+
 const CLOUD_NAME = import.meta.env.VITE_CLOUDINARY_CLOUD_NAME;
 const UPLOAD_PRESET = import.meta.env.VITE_CLOUDINARY_UPLOAD_PRESET;
 
-export async function uploadMedia(file) {
-  if (!CLOUD_NAME || !UPLOAD_PRESET) {
-    throw new Error('Cloudinary is not configured (VITE_CLOUDINARY_CLOUD_NAME / VITE_CLOUDINARY_UPLOAD_PRESET missing)');
-  }
-
+async function uploadToCloudinary(file) {
   const form = new FormData();
   form.append('file', file);
   form.append('upload_preset', UPLOAD_PRESET);
@@ -29,4 +30,27 @@ export async function uploadMedia(file) {
     mimeType: file.type,
     size: file.size,
   };
+}
+
+async function uploadToLocalServer(file) {
+  const form = new FormData();
+  form.append('file', file);
+
+  const { data } = await http.post('/media/upload', form, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+
+  return {
+    url: resolveMediaUrl(data.url),
+    originalName: data.originalName,
+    mimeType: data.mimeType,
+    size: data.size,
+  };
+}
+
+export async function uploadMedia(file) {
+  if (CLOUD_NAME && UPLOAD_PRESET) {
+    return uploadToCloudinary(file);
+  }
+  return uploadToLocalServer(file);
 }

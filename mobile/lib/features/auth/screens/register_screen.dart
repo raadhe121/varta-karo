@@ -13,27 +13,9 @@ import 'login_screen.dart' show errorMessage;
 
 enum _UsernameStatus { idle, checking, available, taken }
 
-const _strengthColors = [
-  AppColors.line,
-  Color(0xFFF87171),
-  Color(0xFFFBBF24),
-  Color(0xFFA3E635),
-  AppColors.success,
-];
-
-int _passwordStrength(String password) {
-  var score = 0;
-  if (password.length >= 8) score++;
-  if (password.length >= 12) score++;
-  final hasLower = password.contains(RegExp(r'[a-z]'));
-  final hasUpper = password.contains(RegExp(r'[A-Z]'));
-  if (hasLower && hasUpper) score++;
-  final hasDigit = password.contains(RegExp(r'[0-9]'));
-  final hasSpecial = password.contains(RegExp(r'[^a-zA-Z0-9]'));
-  if (hasDigit && hasSpecial) score++;
-  return score;
-}
-
+/// Username-only signup, mirroring the web app's RegisterPage.jsx: pick a
+/// handle, agree to guidelines, done — no password, name, email or phone.
+/// The account stays signed in via the stored refresh token on this device.
 class RegisterScreen extends ConsumerStatefulWidget {
   const RegisterScreen({super.key});
 
@@ -42,12 +24,7 @@ class RegisterScreen extends ConsumerStatefulWidget {
 }
 
 class _RegisterScreenState extends ConsumerState<RegisterScreen> {
-  final _name = TextEditingController();
   final _username = TextEditingController();
-  final _email = TextEditingController();
-  final _phone = TextEditingController();
-  final _password = TextEditingController();
-  final _confirm = TextEditingController();
 
   Timer? _usernameDebounce;
   _UsernameStatus _usernameStatus = _UsernameStatus.idle;
@@ -56,21 +33,9 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   String? _error;
 
   @override
-  void initState() {
-    super.initState();
-    _password.addListener(() => setState(() {}));
-    _confirm.addListener(() => setState(() {}));
-  }
-
-  @override
   void dispose() {
     _usernameDebounce?.cancel();
-    _name.dispose();
     _username.dispose();
-    _email.dispose();
-    _phone.dispose();
-    _password.dispose();
-    _confirm.dispose();
     super.dispose();
   }
 
@@ -99,14 +64,10 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     });
   }
 
-  bool get _passwordsMatch =>
-      _confirm.text.isEmpty || _password.text == _confirm.text;
-
   bool get _canSubmit =>
       _agreed &&
+      _username.text.trim().isNotEmpty &&
       _usernameStatus != _UsernameStatus.taken &&
-      _password.text == _confirm.text &&
-      _password.text.length >= 8 &&
       !_loading;
 
   Future<void> _submit() async {
@@ -117,13 +78,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
     try {
       await ref
           .read(authActionsProvider)
-          .register(
-            name: _name.text.trim(),
-            username: _username.text.trim(),
-            password: _password.text,
-            email: _email.text.trim().isEmpty ? null : _email.text.trim(),
-            phone: _phone.text.trim().isEmpty ? null : _phone.text.trim(),
-          );
+          .register(username: _username.text.trim());
     } catch (err) {
       setState(() => _error = errorMessage(err));
     } finally {
@@ -133,8 +88,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final strength = _passwordStrength(_password.text);
-
     return Screen(
       child: Scaffold(
         backgroundColor: Colors.transparent,
@@ -152,13 +105,17 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                   color: AppColors.ink,
                 ),
               ),
+              const SizedBox(height: 6),
+              const Text(
+                "No password needed — you'll stay signed in on this device.",
+                style: TextStyle(fontSize: 13, color: AppColors.inkSoft),
+              ),
               const SizedBox(height: 24),
-              AppInput(label: 'Name', controller: _name),
-              const SizedBox(height: 16),
               AppInput(
                 label: 'Username',
                 controller: _username,
                 onChanged: _onUsernameChanged,
+                autofocus: true,
                 suffixIcon: switch (_usernameStatus) {
                   _UsernameStatus.checking => const Padding(
                     padding: EdgeInsets.all(12),
@@ -181,49 +138,6 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                 error: _usernameStatus == _UsernameStatus.taken
                     ? 'That username is already taken'
                     : null,
-              ),
-              const SizedBox(height: 16),
-              AppInput(
-                label: 'Email (optional)',
-                controller: _email,
-                keyboardType: TextInputType.emailAddress,
-              ),
-              const SizedBox(height: 16),
-              AppInput(
-                label: 'Phone (optional)',
-                controller: _phone,
-                keyboardType: TextInputType.phone,
-              ),
-              const SizedBox(height: 16),
-              AppInput(
-                label: 'Password',
-                controller: _password,
-                obscureText: true,
-              ),
-              const SizedBox(height: 8),
-              Row(
-                children: List.generate(4, (i) {
-                  final active = i < strength;
-                  return Expanded(
-                    child: Container(
-                      margin: EdgeInsets.only(right: i < 3 ? 6 : 0),
-                      height: 4,
-                      decoration: BoxDecoration(
-                        color: active
-                            ? _strengthColors[strength]
-                            : AppColors.line,
-                        borderRadius: BorderRadius.circular(2),
-                      ),
-                    ),
-                  );
-                }),
-              ),
-              const SizedBox(height: 16),
-              AppInput(
-                label: 'Confirm password',
-                controller: _confirm,
-                obscureText: true,
-                error: !_passwordsMatch ? 'Passwords do not match' : null,
               ),
               const SizedBox(height: 16),
               Row(

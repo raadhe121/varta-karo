@@ -15,7 +15,6 @@ import '../features/chat/providers/chat_socket_bridge.dart';
 import '../features/chat/screens/chat_screen.dart';
 import '../features/chat/screens/conversations_screen.dart';
 import '../features/chat/screens/new_group_screen.dart';
-import '../features/contacts/screens/contacts_screen.dart';
 import '../features/feed/screens/comments_screen.dart';
 import '../features/feed/screens/create_post_screen.dart';
 import '../features/feed/screens/feed_screen.dart';
@@ -81,20 +80,29 @@ final goRouterProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/splash',
         builder: (context, state) => const Screen(
-          child: Center(child: CircularProgressIndicator(color: AppColors.accent)),
+          child: Center(
+            child: CircularProgressIndicator(color: AppColors.accent),
+          ),
         ),
       ),
       GoRoute(path: '/login', builder: (context, state) => const LoginScreen()),
-      GoRoute(path: '/register', builder: (context, state) => const RegisterScreen()),
+      GoRoute(
+        path: '/register',
+        builder: (context, state) => const RegisterScreen(),
+      ),
       // Top-level and unauthenticated-reachable (see _redirect) — random
       // chat must work with no session at all.
-      GoRoute(path: '/random-chat', builder: (context, state) => const RandomChatScreen()),
+      GoRoute(
+        path: '/random-chat',
+        builder: (context, state) => const RandomChatScreen(),
+      ),
       // Top-level (outside the tab shell) so it overlays full-screen no
       // matter which tab is active when a call starts — pushed/popped
       // imperatively by CallActions rather than navigated to normally.
       GoRoute(path: '/call', builder: (context, state) => const CallScreen()),
       StatefulShellRoute.indexedStack(
-        builder: (context, state, navigationShell) => _MainShell(navigationShell: navigationShell),
+        builder: (context, state, navigationShell) =>
+            _MainShell(navigationShell: navigationShell),
         branches: [
           StatefulShellBranch(
             navigatorKey: _feedTabKey,
@@ -106,16 +114,28 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   // Nested-leaf-under-tab-root convention from Phase 1 (see
                   // the /profile branch below) — story/new before
                   // story/:userId so the literal segment isn't shadowed.
-                  GoRoute(path: 'create-post', builder: (context, state) => const CreatePostScreen()),
-                  GoRoute(path: 'search', builder: (context, state) => const SearchScreen()),
-                  GoRoute(path: 'story/new', builder: (context, state) => const StoryComposerScreen()),
+                  GoRoute(
+                    path: 'create-post',
+                    builder: (context, state) => const CreatePostScreen(),
+                  ),
+                  GoRoute(
+                    path: 'search',
+                    builder: (context, state) => const SearchScreen(),
+                  ),
+                  GoRoute(
+                    path: 'story/new',
+                    builder: (context, state) => const StoryComposerScreen(),
+                  ),
                   GoRoute(
                     path: 'story/:userId',
-                    builder: (context, state) => StoryViewerScreen(userId: state.pathParameters['userId']!),
+                    builder: (context, state) => StoryViewerScreen(
+                      userId: state.pathParameters['userId']!,
+                    ),
                   ),
                   GoRoute(
                     path: 'post/:id/comments',
-                    builder: (context, state) => CommentsScreen(postId: state.pathParameters['id']!),
+                    builder: (context, state) =>
+                        CommentsScreen(postId: state.pathParameters['id']!),
                   ),
                 ],
               ),
@@ -128,21 +148,23 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                 path: '/chat',
                 builder: (context, state) => const ConversationsScreen(),
                 routes: [
-                  GoRoute(path: 'new-group', builder: (context, state) => const NewGroupScreen()),
-                  // Reached via ConversationsScreen's app bar — mirrors the
-                  // web app's Sidebar.jsx Contacts tab (a separate system
-                  // from the friends list) as a pushed screen instead of an
-                  // inline tab.
-                  GoRoute(path: 'contacts', builder: (context, state) => const ContactsScreen()),
+                  GoRoute(
+                    path: 'new-group',
+                    builder: (context, state) => const NewGroupScreen(),
+                  ),
                   // Not yet linked from any nav affordance (see the call
                   // phase's constraints — chat_screen.dart's app bar is the
                   // only allowed chat-feature touch); reachable by path for
                   // now, e.g. a future entry point in ConversationsScreen.
-                  GoRoute(path: 'calls', builder: (context, state) => const CallHistoryScreen()),
+                  GoRoute(
+                    path: 'calls',
+                    builder: (context, state) => const CallHistoryScreen(),
+                  ),
                   GoRoute(
                     path: ':conversationId',
-                    builder: (context, state) =>
-                        ChatScreen(conversationId: state.pathParameters['conversationId']!),
+                    builder: (context, state) => ChatScreen(
+                      conversationId: state.pathParameters['conversationId']!,
+                    ),
                   ),
                 ],
               ),
@@ -151,7 +173,10 @@ final goRouterProvider = Provider<GoRouter>((ref) {
           StatefulShellBranch(
             navigatorKey: _notificationsTabKey,
             routes: [
-              GoRoute(path: '/notifications', builder: (context, state) => const NotificationsScreen()),
+              GoRoute(
+                path: '/notifications',
+                builder: (context, state) => const NotificationsScreen(),
+              ),
             ],
           ),
           StatefulShellBranch(
@@ -166,10 +191,14 @@ final goRouterProvider = Provider<GoRouter>((ref) {
                   // same way (e.g. a `/chat` branch getting its own nested
                   // `profile/:userId` route) rather than sharing one global
                   // top-level route, so each tab keeps its own back-stack.
-                  GoRoute(path: 'edit', builder: (context, state) => const EditProfileScreen()),
+                  GoRoute(
+                    path: 'edit',
+                    builder: (context, state) => const EditProfileScreen(),
+                  ),
                   GoRoute(
                     path: ':userId',
-                    builder: (context, state) => ProfileScreen(userId: state.pathParameters['userId']),
+                    builder: (context, state) =>
+                        ProfileScreen(userId: state.pathParameters['userId']),
                   ),
                 ],
               ),
@@ -198,7 +227,9 @@ class _MainShell extends ConsumerWidget {
     ref.watch(chatSocketBridgeProvider);
     ref.watch(callSocketBridgeProvider);
     ref.watch(notificationsSocketBridgeProvider);
-    final unreadNotifications = ref.watch(notificationsProvider.select((s) => s.unreadCount));
+    final unreadNotifications = ref.watch(
+      notificationsProvider.select((s) => s.unreadCount),
+    );
 
     // Surfaces a call-ending error (permission denied, "user is
     // unavailable") after the `/call` route has already popped back here —
@@ -214,10 +245,19 @@ class _MainShell extends ConsumerWidget {
       body: navigationShell,
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: navigationShell.currentIndex,
-        onTap: (index) => navigationShell.goBranch(index, initialLocation: index == navigationShell.currentIndex),
+        onTap: (index) => navigationShell.goBranch(
+          index,
+          initialLocation: index == navigationShell.currentIndex,
+        ),
         items: [
-          const BottomNavigationBarItem(icon: Text('📰', style: TextStyle(fontSize: 18)), label: 'Feed'),
-          const BottomNavigationBarItem(icon: Text('💬', style: TextStyle(fontSize: 18)), label: 'Chat'),
+          const BottomNavigationBarItem(
+            icon: Text('📰', style: TextStyle(fontSize: 18)),
+            label: 'Feed',
+          ),
+          const BottomNavigationBarItem(
+            icon: Text('💬', style: TextStyle(fontSize: 18)),
+            label: 'Chat',
+          ),
           BottomNavigationBarItem(
             icon: Badge(
               label: Text('$unreadNotifications'),
@@ -226,7 +266,10 @@ class _MainShell extends ConsumerWidget {
             ),
             label: 'Notifications',
           ),
-          const BottomNavigationBarItem(icon: Text('👤', style: TextStyle(fontSize: 18)), label: 'Profile'),
+          const BottomNavigationBarItem(
+            icon: Text('👤', style: TextStyle(fontSize: 18)),
+            label: 'Profile',
+          ),
         ],
       ),
     );

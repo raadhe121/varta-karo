@@ -2,9 +2,14 @@
 @import 'tailwindcss';
 
 /*
-  "Parchment" theme, matching the VartaKaro product mockups: warm cream
-  page background, white/cream cards, one flat terracotta accent (no
-  gradients), a serif for editorial headings paired with Inter for UI.
+  "Aurora" theme: warm neutral page/card surfaces (unchanged), but the
+  accent is now a violet -> fuchsia -> pink gradient instead of a flat
+  terracotta. --color-accent/-soft stay solid colors (used for text,
+  borders, rings, focus outlines -- gradients don't work there); the
+  gradient itself lives in --gradient-accent and is applied to prominent
+  surfaces via the .bg-accent override below, so every existing
+  bg-accent usage (buttons, active nav, avatar rings, ...) picks it up
+  automatically without touching each component.
 */
 @theme {
   --color-paper: #fffdf9;
@@ -17,9 +22,10 @@
   --color-paper-dark-soft: #332a1f;
   --color-ink: #2b241d;
   --color-ink-soft: #8a7d6c;
-  --color-accent: #c1652f;
-  --color-accent-soft: #f3decb;
+  --color-accent: #7c3aed;
+  --color-accent-soft: #ece3fb;
   --color-line: #e8dcc6;
+  --gradient-accent: linear-gradient(135deg, #6366f1 0%, #a855f7 55%, #ec4899 100%);
 
   --font-display: 'Lora', 'Georgia', serif;
   --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
@@ -38,9 +44,28 @@
   --color-page: #1c1712;
   --color-ink: #f3ead9;
   --color-ink-soft: #b8ab95;
-  --color-accent: #d97b46;
-  --color-accent-soft: #4a3323;
+  --color-accent: #a78bfa;
+  --color-accent-soft: #3a2f5c;
   --color-line: #3a332a;
+  --gradient-accent: linear-gradient(135deg, #818cf8 0%, #c084fc 55%, #f472b6 100%);
+}
+
+/* Turns every existing solid bg-accent surface (buttons, active nav icon,
+   avatar rings, "Follow" pills, ...) into the accent gradient, and gives
+   it a matching soft gradient wash for -soft surfaces. Written unlayered
+   so it wins over Tailwind's generated (layered) utility of the same name. */
+.bg-accent {
+  background-color: var(--color-accent);
+  background-image: var(--gradient-accent);
+}
+.bg-accent-soft {
+  background-image: linear-gradient(135deg, color-mix(in srgb, var(--color-accent) 14%, transparent), color-mix(in srgb, #ec4899 10%, transparent));
+}
+.bg-accent:hover {
+  filter: brightness(1.06);
+}
+.bg-accent:active {
+  filter: brightness(0.96);
 }
 
 @layer components {

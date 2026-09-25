@@ -1,10 +1,19 @@
 import { useEffect, useState } from 'react';
-import { fetchFeed } from '../api/posts.api';
+import { fetchFeed, fetchDiscoverPosts } from '../api/posts.api';
 import AppNav from '../components/layout/AppNav';
 import PostCard from '../components/social/PostCard';
 import StoriesRow from '../components/social/StoriesRow';
 import SuggestionsSidebar from '../components/social/SuggestionsSidebar';
 import Spinner from '../components/common/Spinner';
+
+// Minimum number of cards the feed tries to show. Whatever a follows-only
+// feed comes up short of this gets padded out with random public posts
+// (each carrying its own `followedByMe`, so PostCard shows a Follow
+// button on the ones that aren't from someone already followed) -- a
+// heavy follower always sees mostly their own network, a fresh account
+// with nobody followed sees an all-discover feed, everyone in between
+// sees a mix.
+const MIN_FEED_SIZE = 20;
 
 export default function FeedPage() {
   const [posts, setPosts] = useState(null);
@@ -12,9 +21,17 @@ export default function FeedPage() {
   const [hasMore, setHasMore] = useState(true);
 
   useEffect(() => {
-    fetchFeed().then((data) => {
-      setPosts(data);
-      setHasMore(data.length >= 20);
+    fetchFeed().then(async (data) => {
+      setHasMore(data.length >= MIN_FEED_SIZE);
+      if (data.length >= MIN_FEED_SIZE) {
+        setPosts(data);
+        return;
+      }
+
+      const seenIds = new Set(data.map((p) => p.id));
+      const discovered = await fetchDiscoverPosts();
+      const filler = discovered.filter((p) => !seenIds.has(p.id)).slice(0, MIN_FEED_SIZE - data.length);
+      setPosts([...data, ...filler]);
     });
   }, []);
 
@@ -36,8 +53,8 @@ export default function FeedPage() {
   return (
     <div className="min-h-screen flex flex-col bg-page">
       <AppNav />
-      <div className="w-[90%] mx-auto px-4 py-8 grid grid-cols-[7fr_3fr] gap-10 items-start">
-        <div className="space-y-6 min-w-0">
+      <div className="relative px-4 py-8 lg:pr-[356px]">
+        <div className="max-w-[640px] mx-auto space-y-6">
           <div className="rounded-xl bg-paper border border-line px-4 py-4">
             <StoriesRow />
           </div>
@@ -47,13 +64,16 @@ export default function FeedPage() {
               <Spinner />
             </div>
           ) : posts.length === 0 ? (
-            <p className="text-sm text-ink-soft text-center py-8">
-              No posts yet. Friend or follow someone to see their posts here.
-            </p>
+            <p className="text-sm text-ink-soft text-center py-8">Nothing to show right now.</p>
           ) : (
             <>
               {posts.map((post) => (
-                <PostCard key={post.id} post={post} onDeleted={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))} />
+                <PostCard
+                  key={post.id}
+                  post={post}
+                  showFollowButton={!post.followedByMe}
+                  onDeleted={(id) => setPosts((prev) => prev.filter((p) => p.id !== id))}
+                />
               ))}
               {hasMore && (
                 <div className="flex justify-center py-4">
@@ -66,7 +86,7 @@ export default function FeedPage() {
           )}
         </div>
 
-        <div className="sticky top-8">
+        <div className="hidden lg:block fixed top-24 right-6 w-[320px]">
           <SuggestionsSidebar />
         </div>
       </div>

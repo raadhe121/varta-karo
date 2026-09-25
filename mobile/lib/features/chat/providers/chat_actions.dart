@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/socket_service.dart';
+import '../../../features/profile/data/block_api.dart';
 import '../../../models/conversation.dart';
 import '../../../models/message.dart';
 import '../data/chat_api.dart';
@@ -23,32 +24,48 @@ class ChatActions {
   Future<void> loadConversations() async {
     final conversations = await _ref.read(chatApiProvider).fetchConversations();
     _ref.read(chatProvider.notifier).setConversations(conversations);
-    _ref.read(presenceProvider.notifier).seedFromUsers(conversations.expand((c) => c.participants));
+    _ref
+        .read(presenceProvider.notifier)
+        .seedFromUsers(conversations.expand((c) => c.participants));
   }
 
   Future<void> loadMessages(String conversationId) async {
-    final messages = await _ref.read(chatApiProvider).fetchMessages(conversationId);
+    final messages = await _ref
+        .read(chatApiProvider)
+        .fetchMessages(conversationId);
     _ref.read(chatProvider.notifier).setMessages(conversationId, messages);
-    _ref.read(chatProvider.notifier).setHasMore(conversationId, messages.length >= messagePageSize);
+    _ref
+        .read(chatProvider.notifier)
+        .setHasMore(conversationId, messages.length >= messagePageSize);
   }
 
   Future<void> loadMoreMessages(String conversationId) async {
     final existing = _ref.read(chatProvider).messagesFor(conversationId);
     if (existing.isEmpty) return;
-    final older = await _ref.read(chatApiProvider).fetchMessages(conversationId, before: existing.first.createdAt);
+    final older = await _ref
+        .read(chatApiProvider)
+        .fetchMessages(conversationId, before: existing.first.createdAt);
     _ref.read(chatProvider.notifier).prependMessages(conversationId, older);
-    _ref.read(chatProvider.notifier).setHasMore(conversationId, older.length >= messagePageSize);
+    _ref
+        .read(chatProvider.notifier)
+        .setHasMore(conversationId, older.length >= messagePageSize);
   }
 
   Future<Conversation> startDirectConversation(String userId) async {
-    final conversation = await _ref.read(chatApiProvider).createDirectConversation(userId);
+    final conversation = await _ref
+        .read(chatApiProvider)
+        .createDirectConversation(userId);
     _ref.read(chatProvider.notifier).upsertConversation(conversation);
     return conversation;
   }
 
-  Future<Conversation> createGroup({required String name, required List<String> participantIds}) async {
-    final conversation =
-        await _ref.read(chatApiProvider).createGroupConversation(name: name, participantIds: participantIds);
+  Future<Conversation> createGroup({
+    required String name,
+    required List<String> participantIds,
+  }) async {
+    final conversation = await _ref
+        .read(chatApiProvider)
+        .createGroupConversation(name: name, participantIds: participantIds);
     _ref.read(chatProvider.notifier).upsertConversation(conversation);
     return conversation;
   }
@@ -82,6 +99,53 @@ class ChatActions {
 
   void setTyping(String conversationId, bool isTyping) {
     _ref.read(socketServiceProvider).emitTyping(conversationId, isTyping);
+  }
+
+  Future<void> setMuted(String conversationId, bool muted) async {
+    final result = await _ref
+        .read(chatApiProvider)
+        .setMuted(conversationId, muted);
+    _ref
+        .read(chatProvider.notifier)
+        .updateConversation(conversationId, (c) => c.withMuted(result));
+  }
+
+  Future<void> setDisappearing(String conversationId, int? seconds) async {
+    final result = await _ref
+        .read(chatApiProvider)
+        .setDisappearing(conversationId, seconds);
+    _ref
+        .read(chatProvider.notifier)
+        .updateConversation(
+          conversationId,
+          (c) => c.withDisappearingSeconds(result),
+        );
+  }
+
+  Future<void> blockParticipant(String conversationId, String userId) async {
+    await _ref.read(blockApiProvider).blockUser(userId);
+    _ref
+        .read(chatProvider.notifier)
+        .updateConversation(
+          conversationId,
+          (c) => c.withBlockState(
+            iBlocked: true,
+            blockedByOther: c.blockedByOther,
+          ),
+        );
+  }
+
+  Future<void> unblockParticipant(String conversationId, String userId) async {
+    await _ref.read(blockApiProvider).unblockUser(userId);
+    _ref
+        .read(chatProvider.notifier)
+        .updateConversation(
+          conversationId,
+          (c) => c.withBlockState(
+            iBlocked: false,
+            blockedByOther: c.blockedByOther,
+          ),
+        );
   }
 }
 

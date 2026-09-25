@@ -16,48 +16,89 @@ class ChatApi {
 
   Future<List<Conversation>> fetchConversations() async {
     final res = await _dio.get<List<dynamic>>('/conversations');
-    return res.data!.map((e) => Conversation.fromJson(e as Map<String, dynamic>)).toList();
+    return res.data!
+        .map((e) => Conversation.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   Future<Conversation> createDirectConversation(String userId) async {
-    final res = await _dio.post<Map<String, dynamic>>('/conversations', data: {
-      'type': 'direct',
-      'participantIds': [userId],
-    });
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/conversations',
+      data: {
+        'type': 'direct',
+        'participantIds': [userId],
+      },
+    );
     return Conversation.fromJson(res.data!);
   }
 
-  Future<Conversation> createGroupConversation({required String name, required List<String> participantIds}) async {
-    final res = await _dio.post<Map<String, dynamic>>('/conversations', data: {
-      'type': 'group',
-      'name': name,
-      'participantIds': participantIds,
-    });
+  Future<Conversation> createGroupConversation({
+    required String name,
+    required List<String> participantIds,
+  }) async {
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/conversations',
+      data: {'type': 'group', 'name': name, 'participantIds': participantIds},
+    );
     return Conversation.fromJson(res.data!);
   }
 
-  Future<Conversation> updateConversation(String id, {String? name, String? avatarUrl}) async {
-    final res = await _dio.patch<Map<String, dynamic>>('/conversations/$id', data: {
-      'name': ?name,
-      'avatarUrl': ?avatarUrl,
-    });
+  Future<Conversation> updateConversation(
+    String id, {
+    String? name,
+    String? avatarUrl,
+  }) async {
+    final res = await _dio.patch<Map<String, dynamic>>(
+      '/conversations/$id',
+      data: {'name': ?name, 'avatarUrl': ?avatarUrl},
+    );
     return Conversation.fromJson(res.data!);
   }
 
   Future<Conversation> addParticipants(String id, List<String> userIds) async {
-    final res = await _dio.post<Map<String, dynamic>>('/conversations/$id/participants', data: {'userIds': userIds});
+    final res = await _dio.post<Map<String, dynamic>>(
+      '/conversations/$id/participants',
+      data: {'userIds': userIds},
+    );
     return Conversation.fromJson(res.data!);
+  }
+
+  Future<bool> setMuted(String id, bool muted) async {
+    final res = await _dio.patch<Map<String, dynamic>>(
+      '/conversations/$id/mute',
+      data: {'muted': muted},
+    );
+    return res.data!['muted'] as bool;
+  }
+
+  /// `seconds` is one of null (off), 3600, 86400, 604800 — same allow-list
+  /// the server enforces.
+  Future<int?> setDisappearing(String id, int? seconds) async {
+    final res = await _dio.patch<Map<String, dynamic>>(
+      '/conversations/$id/disappearing',
+      data: {'seconds': seconds},
+    );
+    return res.data!['disappearingSeconds'] as int?;
   }
 
   /// `before` mirrors fetchMessages(id, before) — pass the createdAt of the
   /// oldest already-loaded message to page further back.
-  Future<List<ChatMessage>> fetchMessages(String conversationId, {DateTime? before}) async {
+  Future<List<ChatMessage>> fetchMessages(
+    String conversationId, {
+    DateTime? before,
+  }) async {
     final res = await _dio.get<List<dynamic>>(
       '/conversations/$conversationId/messages',
-      queryParameters: before != null ? {'before': before.toIso8601String()} : null,
+      queryParameters: before != null
+          ? {'before': before.toIso8601String()}
+          : null,
     );
-    return res.data!.map((e) => ChatMessage.fromJson(e as Map<String, dynamic>)).toList();
+    return res.data!
+        .map((e) => ChatMessage.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 }
 
-final chatApiProvider = Provider<ChatApi>((ref) => ChatApi(ref.read(dioProvider)));
+final chatApiProvider = Provider<ChatApi>(
+  (ref) => ChatApi(ref.read(dioProvider)),
+);

@@ -1,6 +1,7 @@
 import { http } from './http';
 
 export const fetchFeed = (before) => http.get('/posts/feed', { params: before ? { before } : {} }).then((r) => r.data);
+export const fetchDiscoverPosts = () => http.get('/posts/discover').then((r) => r.data);
 export const fetchReels = (before) => http.get('/posts/reels', { params: before ? { before } : {} }).then((r) => r.data);
 export const fetchUserPosts = (userId, before) =>
   http.get(`/users/${userId}/posts`, { params: before ? { before } : {} }).then((r) => r.data);

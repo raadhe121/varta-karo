@@ -54,14 +54,21 @@ class _RandomChatScreenState extends ConsumerState<RandomChatScreen> {
           ),
         ),
         body: _connecting
-            ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.accent),
+              )
             : Column(
                 children: [
                   Padding(
                     padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
                     child: Text(
-                      user != null ? 'Chatting as ${user['name']}' : 'Chatting anonymously — no account needed',
-                      style: const TextStyle(color: AppColors.inkSoft, fontSize: 13),
+                      user != null
+                          ? 'Chatting as ${user['name']}'
+                          : 'Chatting anonymously — no account needed',
+                      style: const TextStyle(
+                        color: AppColors.inkSoft,
+                        fontSize: 13,
+                      ),
                     ),
                   ),
                   Expanded(
@@ -69,6 +76,7 @@ class _RandomChatScreenState extends ConsumerState<RandomChatScreen> {
                       RandomChatPhase.idle => const _IdleView(),
                       RandomChatPhase.waiting => const _WaitingView(),
                       RandomChatPhase.chatting => const _ChattingView(),
+                      RandomChatPhase.ended => const _EndedView(),
                     },
                   ),
                 ],
@@ -95,7 +103,11 @@ class _IdleView extends ConsumerWidget {
               style: TextStyle(color: AppColors.inkSoft),
             ),
             const SizedBox(height: 20),
-            AppButton(label: 'Find a stranger', onPressed: () => ref.read(randomChatActionsProvider).findStranger()),
+            AppButton(
+              label: 'Find a stranger',
+              onPressed: () =>
+                  ref.read(randomChatActionsProvider).findStranger(),
+            ),
           ],
         ),
       ),
@@ -114,11 +126,17 @@ class _WaitingView extends ConsumerWidget {
         children: [
           const CircularProgressIndicator(color: AppColors.accent),
           const SizedBox(height: 16),
-          const Text('Looking for someone to match you with...', style: TextStyle(color: AppColors.inkSoft)),
+          const Text(
+            'Looking for someone to match you with...',
+            style: TextStyle(color: AppColors.inkSoft),
+          ),
           const SizedBox(height: 12),
           TextButton(
-            onPressed: () => ref.read(randomChatActionsProvider).leave(),
-            child: const Text('Cancel', style: TextStyle(color: AppColors.inkSoft)),
+            onPressed: () => ref.read(randomChatActionsProvider).close(),
+            child: const Text(
+              'Cancel',
+              style: TextStyle(color: AppColors.inkSoft),
+            ),
           ),
         ],
       ),
@@ -164,9 +182,15 @@ class _ChattingViewState extends ConsumerState<_ChattingView> {
     final isLoggedIn = ref.watch(authSessionProvider).isAuthenticated;
     final partner = ref.watch(randomChatProvider.select((s) => s.partner));
     final messages = ref.watch(randomChatProvider.select((s) => s.messages));
-    final requestState = ref.watch(randomChatProvider.select((s) => s.requestState));
-    final hasPendingRequest = ref.watch(randomChatProvider.select((s) => s.hasPendingRequest));
-    final friendAddedConversationId = ref.watch(randomChatProvider.select((s) => s.friendAddedConversationId));
+    final requestState = ref.watch(
+      randomChatProvider.select((s) => s.requestState),
+    );
+    final hasPendingRequest = ref.watch(
+      randomChatProvider.select((s) => s.hasPendingRequest),
+    );
+    final friendAddedConversationId = ref.watch(
+      randomChatProvider.select((s) => s.friendAddedConversationId),
+    );
     final actions = ref.read(randomChatActionsProvider);
 
     return Column(
@@ -175,16 +199,28 @@ class _ChattingViewState extends ConsumerState<_ChattingView> {
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 8),
           child: Row(
             children: [
-              Avatar(user: AppUser(id: partner?.userId ?? '', name: partner?.name ?? 'Stranger', username: '')),
+              Avatar(
+                user: AppUser(
+                  id: partner?.userId ?? '',
+                  name: partner?.name ?? 'Stranger',
+                  username: '',
+                ),
+              ),
               const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(partner?.name ?? 'Stranger', style: const TextStyle(fontWeight: FontWeight.w600)),
+                    Text(
+                      partner?.name ?? 'Stranger',
+                      style: const TextStyle(fontWeight: FontWeight.w600),
+                    ),
                     Text(
                       partner?.isGuest == true ? 'Anonymous' : 'Has an account',
-                      style: const TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                      style: const TextStyle(
+                        color: AppColors.inkSoft,
+                        fontSize: 12,
+                      ),
                     ),
                   ],
                 ),
@@ -192,40 +228,73 @@ class _ChattingViewState extends ConsumerState<_ChattingView> {
               if (isLoggedIn && requestState == RandomChatRequestState.none)
                 TextButton(
                   onPressed: actions.sendFriendRequest,
-                  child: const Text('Add Friend', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
+                  child: const Text(
+                    'Add Friend',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
                 ),
               if (requestState == RandomChatRequestState.sent)
-                const Text('Request sent', style: TextStyle(color: AppColors.inkSoft, fontSize: 12)),
+                const Text(
+                  'Request sent',
+                  style: TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                ),
               if (requestState == RandomChatRequestState.pending)
-                const Text('Waiting for sign-up', style: TextStyle(color: AppColors.inkSoft, fontSize: 12)),
+                const Text(
+                  'Waiting for sign-up',
+                  style: TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                ),
             ],
           ),
         ),
         const Divider(height: 1, color: AppColors.line),
         if (hasPendingRequest) const _PendingRequestBanner(),
-        if (friendAddedConversationId != null) _FriendAddedBanner(conversationId: friendAddedConversationId),
+        if (friendAddedConversationId != null)
+          _FriendAddedBanner(conversationId: friendAddedConversationId),
         Expanded(
           child: messages.isEmpty
               ? const Center(
-                  child: Text("Say hi \u{1F44B} — you're now connected.", style: TextStyle(color: AppColors.inkSoft, fontSize: 12)),
+                  child: Text(
+                    "Say hi \u{1F44B} — you're now connected.",
+                    style: TextStyle(color: AppColors.inkSoft, fontSize: 12),
+                  ),
                 )
               : ListView.builder(
                   controller: _scrollController,
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 16,
+                    vertical: 8,
+                  ),
                   itemCount: messages.length,
                   itemBuilder: (context, index) {
                     final m = messages[index];
                     return Align(
-                      alignment: m.fromSelf ? Alignment.centerRight : Alignment.centerLeft,
+                      alignment: m.fromSelf
+                          ? Alignment.centerRight
+                          : Alignment.centerLeft,
                       child: Container(
                         margin: const EdgeInsets.symmetric(vertical: 3),
-                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                        constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 14,
+                          vertical: 8,
+                        ),
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width * 0.75,
+                        ),
                         decoration: BoxDecoration(
-                          color: m.fromSelf ? AppColors.accent : AppColors.paperSoft,
+                          color: m.fromSelf
+                              ? AppColors.accent
+                              : AppColors.paperSoft,
                           borderRadius: BorderRadius.circular(AppRadius.lg),
                         ),
-                        child: Text(m.text, style: TextStyle(color: m.fromSelf ? AppColors.white : AppColors.ink)),
+                        child: Text(
+                          m.text,
+                          style: TextStyle(
+                            color: m.fromSelf ? AppColors.white : AppColors.ink,
+                          ),
+                        ),
                       ),
                     );
                   },
@@ -237,7 +306,11 @@ class _ChattingViewState extends ConsumerState<_ChattingView> {
           child: Row(
             children: [
               Expanded(
-                child: AppInput(controller: _textController, hintText: 'Type a message...', onChanged: (_) {}),
+                child: AppInput(
+                  controller: _textController,
+                  hintText: 'Type a message...',
+                  onChanged: (_) {},
+                ),
               ),
               const SizedBox(width: 8),
               AppButton(label: 'Send', onPressed: _send),
@@ -251,12 +324,21 @@ class _ChattingViewState extends ConsumerState<_ChattingView> {
             children: [
               TextButton(
                 onPressed: actions.next,
-                child: const Text('Next stranger', style: TextStyle(color: AppColors.accent, fontWeight: FontWeight.w600)),
+                child: const Text(
+                  'Next stranger',
+                  style: TextStyle(
+                    color: AppColors.accent,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
               ),
               const SizedBox(width: 16),
               TextButton(
                 onPressed: actions.leave,
-                child: const Text('Stop', style: TextStyle(color: AppColors.inkSoft)),
+                child: const Text(
+                  'Stop',
+                  style: TextStyle(color: AppColors.inkSoft),
+                ),
               ),
             ],
           ),
@@ -270,7 +352,8 @@ class _PendingRequestBanner extends ConsumerStatefulWidget {
   const _PendingRequestBanner();
 
   @override
-  ConsumerState<_PendingRequestBanner> createState() => _PendingRequestBannerState();
+  ConsumerState<_PendingRequestBanner> createState() =>
+      _PendingRequestBannerState();
 }
 
 class _PendingRequestBannerState extends ConsumerState<_PendingRequestBanner> {
@@ -292,7 +375,9 @@ class _PendingRequestBannerState extends ConsumerState<_PendingRequestBanner> {
       _error = null;
     });
     try {
-      await ref.read(randomChatActionsProvider).authenticateAsGuest(
+      await ref
+          .read(randomChatActionsProvider)
+          .authenticateAsGuest(
             identifier: _identifier.text.trim(),
             password: _password.text,
           );
@@ -308,11 +393,17 @@ class _PendingRequestBannerState extends ConsumerState<_PendingRequestBanner> {
     return Container(
       margin: const EdgeInsets.fromLTRB(16, 12, 16, 0),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(color: AppColors.accentSoft, borderRadius: BorderRadius.circular(AppRadius.lg)),
+      decoration: BoxDecoration(
+        color: AppColors.accentSoft,
+        borderRadius: BorderRadius.circular(AppRadius.lg),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text('Your chat partner wants to add you as a friend', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13)),
+          const Text(
+            'Your chat partner wants to add you as a friend',
+            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 13),
+          ),
           const SizedBox(height: 2),
           const Text(
             "Log in to accept — you'll both be able to keep chatting after.",
@@ -321,23 +412,99 @@ class _PendingRequestBannerState extends ConsumerState<_PendingRequestBanner> {
           const SizedBox(height: 8),
           AppInput(controller: _identifier, hintText: 'Username or email'),
           const SizedBox(height: 8),
-          AppInput(controller: _password, hintText: 'Password', obscureText: true),
+          AppInput(
+            controller: _password,
+            hintText: 'Password',
+            obscureText: true,
+          ),
           if (_error != null) ...[
             const SizedBox(height: 4),
-            Text(_error!, style: const TextStyle(color: AppColors.danger, fontSize: 12)),
+            Text(
+              _error!,
+              style: const TextStyle(color: AppColors.danger, fontSize: 12),
+            ),
           ],
           const SizedBox(height: 8),
           Row(
             children: [
-              AppButton(label: _loading ? 'Logging in...' : 'Log in & accept', onPressed: _loading ? null : _submit),
+              AppButton(
+                label: _loading ? 'Logging in...' : 'Log in & accept',
+                onPressed: _loading ? null : _submit,
+              ),
               const SizedBox(width: 12),
               TextButton(
                 onPressed: () => context.push('/register'),
-                child: const Text('Create an account instead', style: TextStyle(color: AppColors.accent, fontSize: 12)),
+                child: const Text(
+                  'Create an account instead',
+                  style: TextStyle(color: AppColors.accent, fontSize: 12),
+                ),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+}
+
+class _EndedView extends ConsumerWidget {
+  const _EndedView();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final endedBy = ref.watch(randomChatProvider.select((s) => s.endedBy));
+    final actions = ref.read(randomChatActionsProvider);
+    final message = endedBy == RandomChatEndedBy.self
+        ? 'You ended the chat'
+        : 'Your chat partner ended the chat';
+
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.paperSoft,
+                borderRadius: BorderRadius.circular(AppRadius.full),
+              ),
+              child: Text(
+                message,
+                style: const TextStyle(
+                  color: AppColors.inkSoft,
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            const SizedBox(height: 20),
+            Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TextButton(
+                  onPressed: actions.next,
+                  child: const Text(
+                    'New Chat',
+                    style: TextStyle(
+                      color: AppColors.accent,
+                      fontWeight: FontWeight.w600,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                TextButton(
+                  onPressed: actions.close,
+                  child: const Text(
+                    'Close',
+                    style: TextStyle(color: AppColors.inkSoft),
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -361,10 +528,22 @@ class _FriendAddedBanner extends StatelessWidget {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text("You're friends now!", style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
+          const Text(
+            "You're friends now!",
+            style: TextStyle(
+              color: AppColors.success,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
           TextButton(
             onPressed: () => context.push('/chat/$conversationId'),
-            child: const Text('Open chat', style: TextStyle(color: AppColors.success, fontWeight: FontWeight.w600)),
+            child: const Text(
+              'Open chat',
+              style: TextStyle(
+                color: AppColors.success,
+                fontWeight: FontWeight.w600,
+              ),
+            ),
           ),
         ],
       ),

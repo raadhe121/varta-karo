@@ -6,6 +6,7 @@ const router = Router();
 
 router.use(requireAuth);
 router.get('/feed', postController.getFeed);
+router.get('/discover', postController.getDiscoverPosts);
 router.get('/reels', postController.getReels);
 router.post('/', postController.createPost);
 router.delete('/:id', postController.deletePost);

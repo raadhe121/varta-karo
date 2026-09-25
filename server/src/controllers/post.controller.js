@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Post, Like, Save, Share, Comment, User, Follow } from '../models/index.js';
+import { Post, Like, Save, Share, Comment, User, Follow, sequelize } from '../models/index.js';
 import { isFriend, canView, getFriendIds } from '../services/visibility.service.js';
 import { createNotification } from '../services/notification.service.js';
 
@@ -72,6 +72,27 @@ export async function getFeed(req, res) {
   });
 
   const followingIdSet = new Set(followingIds);
+  return res.json(await Promise.all(posts.map((p) => serializePost(p, req.userId, followingIdSet))));
+}
+
+// Shown when the caller's own feed is empty (nobody followed yet, or
+// nobody they follow has posted): a grab-bag of public posts from other
+// users, each carrying `followedByMe` so the client can show a Follow
+// button inline and help a fresh account find people to follow.
+export async function getDiscoverPosts(req, res) {
+  const { limit = 20 } = req.query;
+
+  const [followingRows, posts] = await Promise.all([
+    Follow.findAll({ where: { followerId: req.userId } }),
+    Post.findAll({
+      where: { visibility: 'public', authorId: { [Op.ne]: req.userId } },
+      include: [{ model: User, as: 'author' }],
+      order: sequelize.random(),
+      limit: Number(limit),
+    }),
+  ]);
+  const followingIdSet = new Set(followingRows.map((f) => f.followingId));
+
   return res.json(await Promise.all(posts.map((p) => serializePost(p, req.userId, followingIdSet))));
 }
 

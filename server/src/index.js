@@ -114,8 +114,8 @@ async function start() {
     process.exit(1);
   }
 
-  httpServer.listen(env.port, () => {
-    console.log(`Vartakaro server listening on http://localhost:${env.port}`);
+  httpServer.listen(env.port, env.host, () => {
+    console.log(`Vartakaro server listening on http://${env.host}:${env.port}`);
   });
 }
 

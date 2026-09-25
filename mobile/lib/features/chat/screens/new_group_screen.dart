@@ -8,13 +8,13 @@ import '../../../common/widgets/avatar.dart';
 import '../../../common/widgets/screen.dart';
 import '../../../config/theme.dart';
 import '../../../models/user.dart';
-import '../../contacts/data/contacts_api.dart';
+import '../../profile/data/social_api.dart';
 import '../providers/chat_actions.dart';
 
 /// Ports `src/components/chat/NewGroupModal.jsx` as a full screen — mobile
 /// has no room for a centered modal over the conversation list. Sources its
-/// picker from ContactsApi.fetchContacts(), matching NewGroupModal.jsx's own
-/// use of fetchContacts() (not the friends list — a separate system).
+/// picker from mutual follows (people who follow the caller back), matching
+/// the web app's NewGroupModal.jsx.
 class NewGroupScreen extends ConsumerStatefulWidget {
   const NewGroupScreen({super.key});
 
@@ -31,7 +31,7 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
   @override
   void initState() {
     super.initState();
-    ref.read(contactsApiProvider).fetchContacts().then((contacts) {
+    ref.read(socialApiProvider).fetchMutualFollows().then((contacts) {
       if (mounted) setState(() => _contacts = contacts);
     });
   }
@@ -55,7 +55,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
   Future<void> _create() async {
     setState(() => _creating = true);
     try {
-      final conversation = await ref.read(chatActionsProvider).createGroup(
+      final conversation = await ref
+          .read(chatActionsProvider)
+          .createGroup(
             name: _nameController.text.trim(),
             participantIds: _selected.toList(),
           );
@@ -63,7 +65,9 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
     } catch (_) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Could not create the group. Please try again.')),
+          const SnackBar(
+            content: Text('Could not create the group. Please try again.'),
+          ),
         );
       }
     } finally {
@@ -73,7 +77,10 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final canCreate = !_creating && _selected.length >= 2 && _nameController.text.trim().isNotEmpty;
+    final canCreate =
+        !_creating &&
+        _selected.length >= 2 &&
+        _nameController.text.trim().isNotEmpty;
 
     return Screen(
       child: Scaffold(
@@ -84,29 +91,48 @@ class _NewGroupScreenState extends ConsumerState<NewGroupScreen> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              AppInput(label: 'Group name', controller: _nameController, onChanged: (_) => setState(() {})),
+              AppInput(
+                label: 'Group name',
+                controller: _nameController,
+                onChanged: (_) => setState(() {}),
+              ),
               const SizedBox(height: 8),
-              const Text('Pick at least 2 contacts', style: TextStyle(color: AppColors.inkSoft, fontSize: 12)),
+              const Text(
+                'Pick at least 2 people who follow you back',
+                style: TextStyle(color: AppColors.inkSoft, fontSize: 12),
+              ),
               const SizedBox(height: 8),
               Expanded(
                 child: _contacts == null
-                    ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+                    ? const Center(
+                        child: CircularProgressIndicator(
+                          color: AppColors.accent,
+                        ),
+                      )
                     : _contacts!.isEmpty
-                        ? const Center(child: Text('No contacts yet.', style: TextStyle(color: AppColors.inkSoft)))
-                        : ListView.builder(
-                            itemCount: _contacts!.length,
-                            itemBuilder: (context, index) {
-                              final contact = _contacts![index];
-                              return CheckboxListTile(
-                                value: _selected.contains(contact.id),
-                                onChanged: (_) => _toggle(contact.id),
-                                controlAffinity: ListTileControlAffinity.leading,
-                                activeColor: AppColors.accent,
-                                secondary: Avatar(user: contact, size: AvatarSize.sm),
-                                title: Text(contact.name),
-                              );
-                            },
-                          ),
+                    ? const Center(
+                        child: Text(
+                          'No mutual follows yet.',
+                          style: TextStyle(color: AppColors.inkSoft),
+                        ),
+                      )
+                    : ListView.builder(
+                        itemCount: _contacts!.length,
+                        itemBuilder: (context, index) {
+                          final contact = _contacts![index];
+                          return CheckboxListTile(
+                            value: _selected.contains(contact.id),
+                            onChanged: (_) => _toggle(contact.id),
+                            controlAffinity: ListTileControlAffinity.leading,
+                            activeColor: AppColors.accent,
+                            secondary: Avatar(
+                              user: contact,
+                              size: AvatarSize.sm,
+                            ),
+                            title: Text(contact.name),
+                          );
+                        },
+                      ),
               ),
               const SizedBox(height: 12),
               AppButton(

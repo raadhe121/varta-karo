@@ -18,13 +18,13 @@ class LastMessage {
   });
 
   factory LastMessage.fromJson(Map<String, dynamic> json) => LastMessage(
-        id: json['id'] as String,
-        content: json['content'] as String?,
-        type: json['type'] as String? ?? 'text',
-        senderId: json['senderId'] as String,
-        senderName: json['senderName'] as String?,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-      );
+    id: json['id'] as String,
+    content: json['content'] as String?,
+    type: json['type'] as String? ?? 'text',
+    senderId: json['senderId'] as String,
+    senderName: json['senderName'] as String?,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+  );
 }
 
 class Conversation {
@@ -35,6 +35,14 @@ class Conversation {
   final List<AppUser> participants;
   final LastMessage? lastMessage;
   final DateTime updatedAt;
+  final bool muted;
+  final int? disappearingSeconds;
+  // true if either side has blocked the other — messaging/calling is
+  // disabled and, when they blocked us, `participants` already carries their
+  // anonymized "Unknown User" identity from the server.
+  final bool messagingDisabled;
+  final bool blockedByOther;
+  final bool iBlocked;
 
   const Conversation({
     required this.id,
@@ -44,6 +52,11 @@ class Conversation {
     required this.participants,
     this.lastMessage,
     required this.updatedAt,
+    this.muted = false,
+    this.disappearingSeconds,
+    this.messagingDisabled = false,
+    this.blockedByOther = false,
+    this.iBlocked = false,
   });
 
   bool get isGroup => type == 'group';
@@ -62,19 +75,26 @@ class Conversation {
   }
 
   factory Conversation.fromJson(Map<String, dynamic> json) => Conversation(
-        id: json['id'] as String,
-        type: json['type'] as String? ?? 'direct',
-        name: json['name'] as String?,
-        avatarUrl: json['avatarUrl'] as String?,
-        participants: (json['participants'] as List<dynamic>? ?? [])
-            .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
-            .toList(),
-        lastMessage:
-            json['lastMessage'] != null ? LastMessage.fromJson(json['lastMessage'] as Map<String, dynamic>) : null,
-        updatedAt: DateTime.parse(json['updatedAt'] as String),
-      );
+    id: json['id'] as String,
+    type: json['type'] as String? ?? 'direct',
+    name: json['name'] as String?,
+    avatarUrl: json['avatarUrl'] as String?,
+    participants: (json['participants'] as List<dynamic>? ?? [])
+        .map((e) => AppUser.fromJson(e as Map<String, dynamic>))
+        .toList(),
+    lastMessage: json['lastMessage'] != null
+        ? LastMessage.fromJson(json['lastMessage'] as Map<String, dynamic>)
+        : null,
+    updatedAt: DateTime.parse(json['updatedAt'] as String),
+    muted: json['muted'] as bool? ?? false,
+    disappearingSeconds: json['disappearingSeconds'] as int?,
+    messagingDisabled: json['messagingDisabled'] as bool? ?? false,
+    blockedByOther: json['blockedByOther'] as bool? ?? false,
+    iBlocked: json['iBlocked'] as bool? ?? false,
+  );
 
-  Conversation copyWith({LastMessage? lastMessage, DateTime? updatedAt}) => Conversation(
+  Conversation copyWith({LastMessage? lastMessage, DateTime? updatedAt}) =>
+      Conversation(
         id: id,
         type: type,
         name: name,
@@ -82,5 +102,60 @@ class Conversation {
         participants: participants,
         lastMessage: lastMessage ?? this.lastMessage,
         updatedAt: updatedAt ?? this.updatedAt,
+        muted: muted,
+        disappearingSeconds: disappearingSeconds,
+        messagingDisabled: messagingDisabled,
+        blockedByOther: blockedByOther,
+        iBlocked: iBlocked,
       );
+
+  /// Dedicated setters (rather than folding into copyWith) so `null` can
+  /// mean "turn disappearing messages off" instead of "leave unchanged".
+  Conversation withMuted(bool value) => Conversation(
+    id: id,
+    type: type,
+    name: name,
+    avatarUrl: avatarUrl,
+    participants: participants,
+    lastMessage: lastMessage,
+    updatedAt: updatedAt,
+    muted: value,
+    disappearingSeconds: disappearingSeconds,
+    messagingDisabled: messagingDisabled,
+    blockedByOther: blockedByOther,
+    iBlocked: iBlocked,
+  );
+
+  Conversation withDisappearingSeconds(int? value) => Conversation(
+    id: id,
+    type: type,
+    name: name,
+    avatarUrl: avatarUrl,
+    participants: participants,
+    lastMessage: lastMessage,
+    updatedAt: updatedAt,
+    muted: muted,
+    disappearingSeconds: value,
+    messagingDisabled: messagingDisabled,
+    blockedByOther: blockedByOther,
+    iBlocked: iBlocked,
+  );
+
+  Conversation withBlockState({
+    required bool iBlocked,
+    required bool blockedByOther,
+  }) => Conversation(
+    id: id,
+    type: type,
+    name: name,
+    avatarUrl: avatarUrl,
+    participants: participants,
+    lastMessage: lastMessage,
+    updatedAt: updatedAt,
+    muted: muted,
+    disappearingSeconds: disappearingSeconds,
+    messagingDisabled: iBlocked || blockedByOther,
+    blockedByOther: blockedByOther,
+    iBlocked: iBlocked,
+  );
 }

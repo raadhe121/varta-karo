@@ -10,7 +10,7 @@ import '../../../config/env.dart';
 import '../../../config/theme.dart';
 import '../../../models/post.dart';
 import '../../../models/user.dart';
-import '../../contacts/data/contacts_api.dart';
+import '../../profile/data/social_api.dart';
 import '../data/posts_api.dart';
 
 /// Ports the explore-grid-then-search-results screen: an empty query shows a
@@ -60,7 +60,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     }
     setState(() => _searching = true);
     _debounce = Timer(const Duration(milliseconds: 300), () async {
-      final results = await ref.read(contactsApiProvider).searchUsers(query);
+      final results = await ref.read(socialApiProvider).searchUsers(query);
       if (mounted && _controller.text.trim() == query) {
         setState(() {
           _results = results;
@@ -83,7 +83,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
               padding: const EdgeInsets.fromLTRB(8, 8, 16, 8),
               child: Row(
                 children: [
-                  IconButton(icon: const Icon(Icons.arrow_back), onPressed: () => context.pop()),
+                  IconButton(
+                    icon: const Icon(Icons.arrow_back),
+                    onPressed: () => context.pop(),
+                  ),
                   Expanded(
                     child: Container(
                       height: 40,
@@ -94,7 +97,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                       ),
                       child: Row(
                         children: [
-                          const Icon(Icons.search, size: 18, color: AppColors.inkSoft),
+                          const Icon(
+                            Icons.search,
+                            size: 18,
+                            color: AppColors.inkSoft,
+                          ),
                           const SizedBox(width: 8),
                           Expanded(
                             child: TextField(
@@ -110,7 +117,11 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
                           if (_controller.text.isNotEmpty)
                             GestureDetector(
                               onTap: () => _controller.clear(),
-                              child: const Icon(Icons.close, size: 18, color: AppColors.inkSoft),
+                              child: const Icon(
+                                Icons.close,
+                                size: 18,
+                                color: AppColors.inkSoft,
+                              ),
                             ),
                         ],
                       ),
@@ -128,11 +139,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _buildResults() {
     if (_searching && _results == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accent),
+      );
     }
     final results = _results ?? [];
     if (results.isEmpty) {
-      return const Center(child: Text('No people found.', style: TextStyle(color: AppColors.inkSoft)));
+      return const Center(
+        child: Text(
+          'No people found.',
+          style: TextStyle(color: AppColors.inkSoft),
+        ),
+      );
     }
     return ListView.builder(
       itemCount: results.length,
@@ -140,7 +158,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
         final user = results[index];
         return ListTile(
           leading: Avatar(user: user, size: AvatarSize.md),
-          title: Text(user.username, style: const TextStyle(fontWeight: FontWeight.w700)),
+          title: Text(
+            user.username,
+            style: const TextStyle(fontWeight: FontWeight.w700),
+          ),
           subtitle: Text(user.name),
           onTap: () => context.push('/profile/${user.id}'),
         );
@@ -150,15 +171,26 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
   Widget _buildExplore() {
     if (_explore == null) {
-      return const Center(child: CircularProgressIndicator(color: AppColors.accent));
+      return const Center(
+        child: CircularProgressIndicator(color: AppColors.accent),
+      );
     }
     final posts = _explore!.where((p) => p.imageUrl != null).toList();
     if (posts.isEmpty) {
-      return const Center(child: Text('Nothing to explore yet.', style: TextStyle(color: AppColors.inkSoft)));
+      return const Center(
+        child: Text(
+          'Nothing to explore yet.',
+          style: TextStyle(color: AppColors.inkSoft),
+        ),
+      );
     }
     return GridView.builder(
       padding: const EdgeInsets.all(2),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 3, crossAxisSpacing: 2, mainAxisSpacing: 2),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 3,
+        crossAxisSpacing: 2,
+        mainAxisSpacing: 2,
+      ),
       itemCount: posts.length,
       itemBuilder: (context, index) {
         final post = posts[index];
@@ -169,9 +201,18 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
             children: [
               post.mediaType == 'video'
                   ? Container(color: AppColors.ink)
-                  : CachedNetworkImage(imageUrl: Env.resolveMediaUrl(post.imageUrl), fit: BoxFit.cover),
+                  : CachedNetworkImage(
+                      imageUrl: Env.resolveMediaUrl(post.imageUrl),
+                      fit: BoxFit.cover,
+                    ),
               if (post.mediaType == 'video')
-                const Center(child: Icon(Icons.play_circle_fill, color: Colors.white70, size: 28)),
+                const Center(
+                  child: Icon(
+                    Icons.play_circle_fill,
+                    color: Colors.white70,
+                    size: 28,
+                  ),
+                ),
             ],
           ),
         );

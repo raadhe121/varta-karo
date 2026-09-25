@@ -4,6 +4,7 @@ import Avatar from '../common/Avatar';
 import { toggleLike, fetchComments, addComment, deletePost } from '../../api/posts.api';
 import { useAuthStore } from '../../store/authStore';
 import { resolveMediaUrl } from '../../utils/media';
+import FollowButton from './FollowButton';
 
 function timeAgo(dateStr) {
   const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
@@ -16,7 +17,7 @@ function timeAgo(dateStr) {
 
 const VISIBILITY_LABEL = { public: 'Public', friends: 'Friends', only_me: 'Only me' };
 
-export default function PostCard({ post, onDeleted }) {
+export default function PostCard({ post, onDeleted, showFollowButton = false }) {
   const myId = useAuthStore((s) => s.user?.id);
   const [liked, setLiked] = useState(post.likedByMe);
   const [likeCount, setLikeCount] = useState(post.likeCount);
@@ -24,6 +25,7 @@ export default function PostCard({ post, onDeleted }) {
   const [comments, setComments] = useState(null);
   const [commentText, setCommentText] = useState('');
   const [commentCount, setCommentCount] = useState(post.commentCount);
+  const [followedByMe, setFollowedByMe] = useState(post.followedByMe);
 
   const handleLike = async () => {
     const res = await toggleLike(post.id);
@@ -64,19 +66,26 @@ export default function PostCard({ post, onDeleted }) {
             </p>
           </div>
         </Link>
-        {post.author.id === myId && (
+        {post.author.id === myId ? (
           <button onClick={handleDelete} title="Delete post" className="text-ink-soft hover:text-red-600 px-1 leading-none text-lg font-bold tracking-widest">
             ⋮
           </button>
+        ) : (
+          showFollowButton && (
+            <FollowButton
+              profile={{ id: post.author.id, isFollowing: followedByMe }}
+              onChange={() => setFollowedByMe((f) => !f)}
+            />
+          )
         )}
       </div>
 
       {post.content && !post.imageUrl && <p className="text-sm whitespace-pre-wrap px-3 pb-3">{post.content}</p>}
       {post.imageUrl &&
         (post.mediaType === 'video' ? (
-          <video src={resolveMediaUrl(post.imageUrl)} controls className="w-full aspect-square object-cover bg-black" />
+          <video src={resolveMediaUrl(post.imageUrl)} controls className="w-full max-h-[470px] object-cover bg-black" />
         ) : (
-          <img src={resolveMediaUrl(post.imageUrl)} alt="" className="w-full aspect-square object-cover" />
+          <img src={resolveMediaUrl(post.imageUrl)} alt="" className="w-full max-h-[470px] object-cover" />
         ))}
 
       <div className="flex items-center gap-4 px-2 pt-2">

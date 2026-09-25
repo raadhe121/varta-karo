@@ -20,14 +20,6 @@ function KeyIcon() {
     </svg>
   );
 }
-function PhoneIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <rect x="7" y="2" width="10" height="20" rx="2" />
-      <path strokeLinecap="round" d="M11 18h2" />
-    </svg>
-  );
-}
 function EyeIcon({ off }) {
   return off ? (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
@@ -40,14 +32,6 @@ function EyeIcon({ off }) {
     </svg>
   );
 }
-function ShieldIcon() {
-  return (
-    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8">
-      <path strokeLinecap="round" strokeLinejoin="round" d="M12 3l7 3v6c0 4.5-3 7.5-7 9-4-1.5-7-4.5-7-9V6l7-3z" />
-    </svg>
-  );
-}
-
 function PasswordLogin() {
   const { login } = useAuth();
   const navigate = useNavigate();
@@ -134,92 +118,7 @@ function PasswordLogin() {
   );
 }
 
-function OtpLogin() {
-  const { requestOtp, verifyOtp } = useAuth();
-  const navigate = useNavigate();
-  const [phone, setPhone] = useState('');
-  const [code, setCode] = useState('');
-  const [sent, setSent] = useState(false);
-  const [error, setError] = useState('');
-  const [loading, setLoading] = useState(false);
-
-  const send = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await requestOtp(phone);
-      setSent(true);
-    } catch (err) {
-      setError(err.response?.data?.message || 'Could not send code');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const verify = async (e) => {
-    e.preventDefault();
-    setError('');
-    setLoading(true);
-    try {
-      await verifyOtp(phone, code);
-      navigate('/feed');
-    } catch (err) {
-      setError(err.response?.data?.message || 'Invalid code');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  if (!sent) {
-    return (
-      <form onSubmit={send} className="space-y-4">
-        <div>
-          <label className="text-sm font-semibold">Phone number</label>
-          <div className="relative mt-1.5">
-            <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-ink-soft">
-              <PhoneIcon />
-            </span>
-            <input
-              className="input pl-10"
-              placeholder="+91 98765 43210"
-              value={phone}
-              onChange={(e) => setPhone(e.target.value)}
-              required
-            />
-          </div>
-        </div>
-        {error && <p className="text-sm text-red-600">{error}</p>}
-        <Button type="submit" className="w-full" disabled={loading}>
-          {loading ? 'Sending...' : 'Send code'}
-        </Button>
-        <p className="text-xs text-ink-soft">Dev mode: the code is printed in the server console.</p>
-      </form>
-    );
-  }
-
-  return (
-    <form onSubmit={verify} className="space-y-4">
-      <div>
-        <label className="text-sm font-semibold">6-digit code</label>
-        <input
-          className="input mt-1.5"
-          placeholder="123456"
-          value={code}
-          onChange={(e) => setCode(e.target.value)}
-          required
-        />
-      </div>
-      {error && <p className="text-sm text-red-600">{error}</p>}
-      <Button type="submit" className="w-full" disabled={loading}>
-        {loading ? 'Verifying...' : 'Verify & continue'}
-      </Button>
-    </form>
-  );
-}
-
 export default function LoginPage() {
-  const [tab, setTab] = useState('password');
   const [googleError, setGoogleError] = useState('');
   const navigate = useNavigate();
 
@@ -240,11 +139,31 @@ export default function LoginPage() {
           <span className="font-display font-bold text-accent">VartaKaro</span>
           <span className="text-sm text-ink-soft">&mdash; Stories &amp; Conversations</span>
         </div>
-        <p className="text-xs text-ink-soft hidden sm:block">Passwords are hashed &amp; never stored in plain text</p>
       </div>
 
-      <div className="relative flex items-start justify-center px-4 pb-16 pt-4">
-        <div className="w-full max-w-lg">
+      <div className="relative max-w-5xl mx-auto px-4 pb-16 pt-4 grid md:grid-cols-2 gap-10 items-start">
+        <div className="hidden md:block">
+          <span className="inline-flex items-center gap-1.5 text-xs font-bold text-accent uppercase tracking-wide bg-accent-soft rounded-full px-3 py-1 mb-4">
+            ✦ Welcome Back
+          </span>
+          <h1 className="font-display text-4xl font-bold leading-tight mb-4">Your Quiet Corner Is Right Where You Left It</h1>
+          <p className="text-ink-soft mb-8">
+            Real conversations, photo-sharing, and small circles &mdash; without algorithmic noise. Sign in to pick up
+            where you left off.
+          </p>
+
+          <div className="rounded-2xl bg-accent-soft/60 p-6 mb-6">
+            <p className="text-xs uppercase tracking-wide text-accent font-bold mb-2">Chronicle Rule No. 1</p>
+            <p className="font-display text-xl italic">&ldquo;Write for depth, read for presence.&rdquo;</p>
+          </div>
+
+          <div className="rounded-2xl bg-paper p-4 shadow-sm shadow-ink/5 text-sm text-ink-soft">
+            A quiet corner of the web. No tracking cookies, no surveillance monetization &mdash; just real
+            conversations.
+          </div>
+        </div>
+
+        <div className="w-full max-w-lg mx-auto md:mx-0">
           <div className="relative rounded-3xl bg-paper shadow-xl shadow-ink/10 overflow-hidden">
             <div className="absolute -top-3 right-8 flex gap-1.5">
               <span className="h-4 w-1.5 rounded-full bg-line" />
@@ -260,26 +179,7 @@ export default function LoginPage() {
               <h1 className="font-display text-3xl font-bold mb-2">Welcome Back to the Sanctuary</h1>
               <p className="text-ink-soft mb-6">Enter your email or username and passphrase to access your chats and circles.</p>
 
-              <div className="flex gap-1 mb-5 bg-paper-soft rounded-full p-1">
-                <button
-                  className={`flex-1 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    tab === 'password' ? 'bg-paper shadow-sm text-accent' : 'text-ink-soft'
-                  }`}
-                  onClick={() => setTab('password')}
-                >
-                  Password
-                </button>
-                <button
-                  className={`flex-1 py-1.5 rounded-full text-sm font-semibold transition-colors ${
-                    tab === 'otp' ? 'bg-paper shadow-sm text-accent' : 'text-ink-soft'
-                  }`}
-                  onClick={() => setTab('otp')}
-                >
-                  Phone code
-                </button>
-              </div>
-
-              {tab === 'password' ? <PasswordLogin /> : <OtpLogin />}
+              <PasswordLogin />
 
               <div className="flex items-center gap-3 my-5">
                 <span className="h-px flex-1 bg-line" />
@@ -304,26 +204,6 @@ export default function LoginPage() {
               </p>
             </div>
           </div>
-
-          <div className="mt-4 rounded-2xl bg-paper p-4 shadow-sm shadow-ink/5 flex gap-3">
-            <span className="text-emerald-700 shrink-0">
-              <ShieldIcon />
-            </span>
-            <div>
-              <p className="font-semibold text-sm">Privacy, simply done</p>
-              <p className="text-sm text-ink-soft mt-0.5">
-                No behavioral trackers, third-party analytics, or ad surveillance anywhere in VartaKaro.
-              </p>
-            </div>
-          </div>
-
-          <Link
-            to="/random-chat"
-            className="mt-4 block rounded-2xl bg-paper p-4 shadow-sm shadow-ink/5 hover:shadow-md transition-shadow text-center"
-          >
-            <p className="font-semibold text-sm text-accent">Talk to a stranger</p>
-            <p className="text-xs text-ink-soft mt-0.5">No account needed — just say hi and see who you get.</p>
-          </Link>
         </div>
       </div>
     </div>

@@ -12,6 +12,7 @@ function required(name, fallback) {
 
 export const env = {
   port: Number(process.env.PORT || 5000),
+  host: process.env.HOST || '0.0.0.0',
   // A small allow-list rather than one origin: the web client (Vite) and
   // Expo's web-preview target run on different dev ports. Native mobile
   // requests (Expo Go / a built app) aren't subject to browser CORS at all,

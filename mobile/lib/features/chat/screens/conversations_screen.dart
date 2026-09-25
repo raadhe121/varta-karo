@@ -8,7 +8,7 @@ import '../../../config/theme.dart';
 import '../../../core/auth_session.dart';
 import '../../../models/conversation.dart';
 import '../../../models/user.dart';
-import '../../contacts/data/contacts_api.dart';
+import '../../profile/data/social_api.dart';
 import '../providers/chat_actions.dart';
 import '../providers/chat_provider.dart';
 import '../providers/presence_provider.dart';
@@ -20,7 +20,8 @@ class ConversationsScreen extends ConsumerStatefulWidget {
   const ConversationsScreen({super.key});
 
   @override
-  ConsumerState<ConversationsScreen> createState() => _ConversationsScreenState();
+  ConsumerState<ConversationsScreen> createState() =>
+      _ConversationsScreenState();
 }
 
 class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
@@ -44,14 +45,18 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
     showModalBottomSheet(
       context: context,
       backgroundColor: AppColors.paper,
-      shape: const RoundedRectangleBorder(borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg))),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(AppRadius.lg)),
+      ),
       builder: (_) => const _NewChatSheet(),
     );
   }
 
   @override
   Widget build(BuildContext context) {
-    final conversations = ref.watch(chatProvider.select((s) => s.conversations));
+    final conversations = ref.watch(
+      chatProvider.select((s) => s.conversations),
+    );
     final myId = ref.watch(authSessionProvider).userId ?? '';
 
     return Screen(
@@ -71,11 +76,6 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
               onPressed: () => context.push('/chat/calls'),
             ),
             IconButton(
-              icon: const Icon(Icons.contacts_outlined),
-              tooltip: 'Contacts',
-              onPressed: () => context.push('/chat/contacts'),
-            ),
-            IconButton(
               icon: const Icon(Icons.add_comment_outlined),
               tooltip: 'New chat',
               onPressed: _openNewChatSheet,
@@ -83,7 +83,9 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
           ],
         ),
         body: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.accent),
+              )
             : RefreshIndicator(
                 onRefresh: _load,
                 color: AppColors.accent,
@@ -92,16 +94,25 @@ class _ConversationsScreenState extends ConsumerState<ConversationsScreen> {
                         children: const [
                           SizedBox(height: 120),
                           Center(
-                            child: Text('No chats yet. Start one below.', style: TextStyle(color: AppColors.inkSoft)),
+                            child: Text(
+                              'No chats yet. Start one below.',
+                              style: TextStyle(color: AppColors.inkSoft),
+                            ),
                           ),
                         ],
                       )
                     : ListView.separated(
                         padding: const EdgeInsets.symmetric(vertical: 4),
                         itemCount: conversations.length,
-                        separatorBuilder: (context, index) => const Divider(height: 1, color: AppColors.line, indent: 76),
-                        itemBuilder: (context, index) =>
-                            _ConversationTile(conversation: conversations[index], myId: myId),
+                        separatorBuilder: (context, index) => const Divider(
+                          height: 1,
+                          color: AppColors.line,
+                          indent: 76,
+                        ),
+                        itemBuilder: (context, index) => _ConversationTile(
+                          conversation: conversations[index],
+                          myId: myId,
+                        ),
                       ),
               ),
       ),
@@ -118,8 +129,14 @@ class _ConversationTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final other = conversation.otherParticipant(myId);
-    final isOnline = ref.watch(presenceProvider.select((p) => p[other?.id]?.isOnline ?? other?.isOnline ?? false));
-    final unread = conversation.lastMessage != null && conversation.lastMessage!.senderId != myId;
+    final isOnline = ref.watch(
+      presenceProvider.select(
+        (p) => p[other?.id]?.isOnline ?? other?.isOnline ?? false,
+      ),
+    );
+    final unread =
+        conversation.lastMessage != null &&
+        conversation.lastMessage!.senderId != myId;
 
     final avatarUser = conversation.isGroup
         ? AppUser(
@@ -133,7 +150,11 @@ class _ConversationTile extends ConsumerWidget {
 
     return ListTile(
       onTap: () => context.push('/chat/${conversation.id}'),
-      leading: Avatar(user: avatarUser, showStatus: !conversation.isGroup, isOnline: isOnline),
+      leading: Avatar(
+        user: avatarUser,
+        showStatus: !conversation.isGroup && !conversation.messagingDisabled,
+        isOnline: isOnline,
+      ),
       title: Text(
         conversation.displayTitle(myId),
         maxLines: 1,
@@ -150,10 +171,20 @@ class _ConversationTile extends ConsumerWidget {
         mainAxisAlignment: MainAxisAlignment.center,
         crossAxisAlignment: CrossAxisAlignment.end,
         children: [
-          Text(_timeAgo(conversation.lastMessage?.createdAt), style: const TextStyle(fontSize: 11, color: AppColors.inkSoft)),
+          Text(
+            _timeAgo(conversation.lastMessage?.createdAt),
+            style: const TextStyle(fontSize: 11, color: AppColors.inkSoft),
+          ),
           if (unread) ...[
             const SizedBox(height: 6),
-            Container(width: 9, height: 9, decoration: const BoxDecoration(color: AppColors.accent, shape: BoxShape.circle)),
+            Container(
+              width: 9,
+              height: 9,
+              decoration: const BoxDecoration(
+                color: AppColors.accent,
+                shape: BoxShape.circle,
+              ),
+            ),
           ],
         ],
       ),
@@ -177,11 +208,10 @@ class _ConversationTile extends ConsumerWidget {
   }
 }
 
-/// A lightweight stand-in for Sidebar.jsx's Contacts tab + "+ Group" button:
-/// pick a contact to start a direct chat, or jump to the full group-creation
-/// screen. Uses ContactsApi.fetchContacts() — matching NewGroupModal.jsx and
-/// Sidebar.jsx, which both source their picker from /contacts, not /friends
-/// (a separate system — see contacts/data/contacts_api.dart).
+/// Starting a direct chat requires a follow-back: only people who follow the
+/// current user and are followed by them show up here — the server enforces
+/// the same rule in conversation.controller.createConversation, this is just
+/// the picker for it. Mirrors the web app's NewChatModal.jsx.
 class _NewChatSheet extends ConsumerStatefulWidget {
   const _NewChatSheet();
 
@@ -190,22 +220,43 @@ class _NewChatSheet extends ConsumerStatefulWidget {
 }
 
 class _NewChatSheetState extends ConsumerState<_NewChatSheet> {
-  List<AppUser>? _contacts;
+  List<AppUser>? _users;
+  String _query = '';
+  String? _creatingId;
 
   @override
   void initState() {
     super.initState();
-    ref.read(contactsApiProvider).fetchContacts().then((contacts) {
-      if (mounted) setState(() => _contacts = contacts);
+    ref.read(socialApiProvider).fetchMutualFollows().then((users) {
+      if (mounted) setState(() => _users = users);
     });
   }
 
-  Future<void> _startChat(AppUser contact) async {
-    final navigator = Navigator.of(context);
-    final router = GoRouter.of(context);
-    navigator.pop();
-    final conversation = await ref.read(chatActionsProvider).startDirectConversation(contact.id);
-    router.push('/chat/${conversation.id}');
+  List<AppUser> get _filtered {
+    final all = _users ?? const [];
+    final q = _query.trim().toLowerCase();
+    if (q.isEmpty) return all;
+    return all
+        .where(
+          (u) =>
+              u.name.toLowerCase().contains(q) ||
+              u.username.toLowerCase().contains(q),
+        )
+        .toList();
+  }
+
+  Future<void> _startChat(AppUser user) async {
+    setState(() => _creatingId = user.id);
+    try {
+      final conversation = await ref
+          .read(chatActionsProvider)
+          .startDirectConversation(user.id);
+      if (!mounted) return;
+      Navigator.of(context).pop();
+      GoRouter.of(context).push('/chat/${conversation.id}');
+    } finally {
+      if (mounted) setState(() => _creatingId = null);
+    }
   }
 
   @override
@@ -219,7 +270,12 @@ class _NewChatSheetState extends ConsumerState<_NewChatSheet> {
           children: [
             Row(
               children: [
-                const Expanded(child: Text('New chat', style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700))),
+                const Expanded(
+                  child: Text(
+                    'New chat',
+                    style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                  ),
+                ),
                 TextButton.icon(
                   onPressed: () {
                     Navigator.of(context).pop();
@@ -231,24 +287,63 @@ class _NewChatSheetState extends ConsumerState<_NewChatSheet> {
               ],
             ),
             const SizedBox(height: 8),
+            if (_users != null && _users!.isNotEmpty)
+              TextField(
+                onChanged: (value) => setState(() => _query = value),
+                decoration: const InputDecoration(
+                  hintText: 'Search friends...',
+                  prefixIcon: Icon(Icons.search),
+                ),
+              ),
+            const SizedBox(height: 8),
             SizedBox(
               height: 320,
-              child: _contacts == null
-                  ? const Center(child: CircularProgressIndicator(color: AppColors.accent))
-                  : _contacts!.isEmpty
-                      ? const Center(child: Text('No contacts yet.', style: TextStyle(color: AppColors.inkSoft)))
-                      : ListView.builder(
-                          itemCount: _contacts!.length,
-                          itemBuilder: (context, index) {
-                            final contact = _contacts![index];
-                            return ListTile(
-                              leading: Avatar(user: contact, size: AvatarSize.sm),
-                              title: Text(contact.name),
-                              subtitle: Text('@${contact.username}'),
-                              onTap: () => _startChat(contact),
-                            );
-                          },
+              child: _users == null
+                  ? const Center(
+                      child: CircularProgressIndicator(color: AppColors.accent),
+                    )
+                  : _users!.isEmpty
+                  ? const Center(
+                      child: Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 16),
+                        child: Text(
+                          "You can chat with people once you follow each other. Follow someone, and once "
+                          "they follow you back, they'll show up here.",
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: AppColors.inkSoft),
                         ),
+                      ),
+                    )
+                  : _filtered.isEmpty
+                  ? Center(
+                      child: Text(
+                        'No matches for "$_query".',
+                        style: const TextStyle(color: AppColors.inkSoft),
+                      ),
+                    )
+                  : ListView.builder(
+                      itemCount: _filtered.length,
+                      itemBuilder: (context, index) {
+                        final user = _filtered[index];
+                        return ListTile(
+                          leading: Avatar(user: user, size: AvatarSize.sm),
+                          title: Text(user.name),
+                          subtitle: Text('@${user.username}'),
+                          trailing: _creatingId == user.id
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : null,
+                          onTap: _creatingId == null
+                              ? () => _startChat(user)
+                              : null,
+                        );
+                      },
+                    ),
             ),
           ],
         ),

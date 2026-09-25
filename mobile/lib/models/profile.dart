@@ -1,4 +1,3 @@
-import 'social_request.dart';
 import 'user.dart';
 
 class AboutInfo {
@@ -7,18 +6,26 @@ class AboutInfo {
   final String? location;
   final List<UserLink> links;
 
-  const AboutInfo({this.work, this.education, this.location, this.links = const []});
+  const AboutInfo({
+    this.work,
+    this.education,
+    this.location,
+    this.links = const [],
+  });
 
-  bool get isEmpty => work == null && education == null && location == null && links.isEmpty;
+  bool get isEmpty =>
+      work == null && education == null && location == null && links.isEmpty;
 
   factory AboutInfo.fromJson(Map<String, dynamic> json) => AboutInfo(
-        work: json['work'] as String?,
-        education: json['education'] as String?,
-        location: json['location'] as String?,
-        links:
-            (json['links'] as List<dynamic>?)?.map((e) => UserLink.fromJson(e as Map<String, dynamic>)).toList() ??
-                const [],
-      );
+    work: json['work'] as String?,
+    education: json['education'] as String?,
+    location: json['location'] as String?,
+    links:
+        (json['links'] as List<dynamic>?)
+            ?.map((e) => UserLink.fromJson(e as Map<String, dynamic>))
+            .toList() ??
+        const [],
+  );
 }
 
 /// GET /users/:id/profile response — the rich, relationship-aware profile
@@ -34,14 +41,18 @@ class UserProfile {
   final String status;
   final DateTime? lastSeenAt;
   final bool isSelf;
-  final bool isFriend;
   final bool isFollowing;
-  final PendingFriendRequest? hasPendingFriendRequest;
-  final int friendCount;
+  final bool isFollowedBy;
+  final bool isBlocked;
+  final bool blockedByOther;
   final int followerCount;
   final int followingCount;
   final String? profileVisibility;
   final AboutInfo? about;
+
+  /// "Friends" everywhere in this app now means a mutual follow — each
+  /// follows the other — replacing the old separate friend-request system.
+  bool get isMutual => isFollowing && isFollowedBy;
 
   const UserProfile({
     required this.id,
@@ -54,10 +65,10 @@ class UserProfile {
     this.status = 'offline',
     this.lastSeenAt,
     this.isSelf = false,
-    this.isFriend = false,
     this.isFollowing = false,
-    this.hasPendingFriendRequest,
-    this.friendCount = 0,
+    this.isFollowedBy = false,
+    this.isBlocked = false,
+    this.blockedByOther = false,
     this.followerCount = 0,
     this.followingCount = 0,
     this.profileVisibility,
@@ -65,40 +76,42 @@ class UserProfile {
   });
 
   factory UserProfile.fromJson(Map<String, dynamic> json) => UserProfile(
-        id: json['id'] as String,
-        name: json['name'] as String? ?? '',
-        username: json['username'] as String? ?? '',
-        avatarUrl: json['avatarUrl'] as String?,
-        avatarColor: json['avatarColor'] as String?,
-        coverPhotoUrl: json['coverPhotoUrl'] as String?,
-        bio: json['bio'] as String?,
-        status: json['status'] as String? ?? 'offline',
-        lastSeenAt: json['lastSeenAt'] != null ? DateTime.tryParse(json['lastSeenAt'] as String) : null,
-        isSelf: json['isSelf'] as bool? ?? false,
-        isFriend: json['isFriend'] as bool? ?? false,
-        isFollowing: json['isFollowing'] as bool? ?? false,
-        hasPendingFriendRequest: json['hasPendingFriendRequest'] != null
-            ? PendingFriendRequest.fromJson(json['hasPendingFriendRequest'] as Map<String, dynamic>)
-            : null,
-        friendCount: json['friendCount'] as int? ?? 0,
-        followerCount: json['followerCount'] as int? ?? 0,
-        followingCount: json['followingCount'] as int? ?? 0,
-        profileVisibility: json['profileVisibility'] as String?,
-        about: json['about'] != null ? AboutInfo.fromJson(json['about'] as Map<String, dynamic>) : null,
-      );
+    id: json['id'] as String,
+    name: json['name'] as String? ?? '',
+    username: json['username'] as String? ?? '',
+    avatarUrl: json['avatarUrl'] as String?,
+    avatarColor: json['avatarColor'] as String?,
+    coverPhotoUrl: json['coverPhotoUrl'] as String?,
+    bio: json['bio'] as String?,
+    status: json['status'] as String? ?? 'offline',
+    lastSeenAt: json['lastSeenAt'] != null
+        ? DateTime.tryParse(json['lastSeenAt'] as String)
+        : null,
+    isSelf: json['isSelf'] as bool? ?? false,
+    isFollowing: json['isFollowing'] as bool? ?? false,
+    isFollowedBy: json['isFollowedBy'] as bool? ?? false,
+    isBlocked: json['isBlocked'] as bool? ?? false,
+    blockedByOther: json['blockedByOther'] as bool? ?? false,
+    followerCount: json['followerCount'] as int? ?? 0,
+    followingCount: json['followingCount'] as int? ?? 0,
+    profileVisibility: json['profileVisibility'] as String?,
+    about: json['about'] != null
+        ? AboutInfo.fromJson(json['about'] as Map<String, dynamic>)
+        : null,
+  );
 
   /// AsUser is handy where a widget (e.g. Avatar) expects a plain AppUser.
   AppUser asUser() => AppUser(
-        id: id,
-        name: name,
-        username: username,
-        avatarUrl: avatarUrl,
-        avatarColor: avatarColor ?? '#C77D2E',
-        bio: bio,
-        status: status,
-        lastSeenAt: lastSeenAt,
-        coverPhotoUrl: coverPhotoUrl,
-      );
+    id: id,
+    name: name,
+    username: username,
+    avatarUrl: avatarUrl,
+    avatarColor: avatarColor ?? '#C77D2E',
+    bio: bio,
+    status: status,
+    lastSeenAt: lastSeenAt,
+    coverPhotoUrl: coverPhotoUrl,
+  );
 }
 
 class ActivityItem {
@@ -107,12 +120,17 @@ class ActivityItem {
   final String summary;
   final String? postId;
 
-  const ActivityItem({required this.type, required this.createdAt, required this.summary, this.postId});
+  const ActivityItem({
+    required this.type,
+    required this.createdAt,
+    required this.summary,
+    this.postId,
+  });
 
   factory ActivityItem.fromJson(Map<String, dynamic> json) => ActivityItem(
-        type: json['type'] as String,
-        createdAt: DateTime.parse(json['createdAt'] as String),
-        summary: json['summary'] as String,
-        postId: json['postId'] as String?,
-      );
+    type: json['type'] as String,
+    createdAt: DateTime.parse(json['createdAt'] as String),
+    summary: json['summary'] as String,
+    postId: json['postId'] as String?,
+  );
 }
