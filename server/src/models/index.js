@@ -20,6 +20,9 @@ import { CallLog } from './CallLog.js';
 import { Community } from './Community.js';
 import { CommunityMember } from './CommunityMember.js';
 import { CommunityPost } from './CommunityPost.js';
+import { Collection } from './Collection.js';
+import { Highlight } from './Highlight.js';
+import { HighlightItem } from './HighlightItem.js';
 
 // Conversation <-> User through ConversationParticipant
 Conversation.belongsToMany(User, {
@@ -74,10 +77,24 @@ Like.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Post.hasMany(Comment, { foreignKey: 'postId', as: 'comments' });
 Comment.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
 Comment.belongsTo(User, { foreignKey: 'authorId', as: 'author' });
+Comment.belongsTo(Comment, { foreignKey: 'parentId', as: 'parent' });
+Comment.hasMany(Comment, { foreignKey: 'parentId', as: 'replies' });
 
 Post.hasMany(Save, { foreignKey: 'postId', as: 'saves' });
 Save.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
 Save.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Save.belongsTo(Collection, { foreignKey: 'collectionId', as: 'collection' });
+
+// Saved-post collections
+User.hasMany(Collection, { foreignKey: 'ownerId', as: 'collections' });
+Collection.belongsTo(User, { foreignKey: 'ownerId', as: 'owner' });
+Collection.hasMany(Save, { foreignKey: 'collectionId', as: 'saves' });
+
+// Profile highlights (permanent copies of story media)
+User.hasMany(Highlight, { foreignKey: 'ownerId', as: 'highlights' });
+Highlight.belongsTo(User, { foreignKey: 'ownerId', as: 'owner' });
+Highlight.hasMany(HighlightItem, { foreignKey: 'highlightId', as: 'items' });
+HighlightItem.belongsTo(Highlight, { foreignKey: 'highlightId', as: 'highlight' });
 
 Post.hasMany(Share, { foreignKey: 'postId', as: 'shares' });
 Share.belongsTo(Post, { foreignKey: 'postId', as: 'post' });
@@ -134,4 +151,7 @@ export {
   Community,
   CommunityMember,
   CommunityPost,
+  Collection,
+  Highlight,
+  HighlightItem,
 };

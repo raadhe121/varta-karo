@@ -23,6 +23,8 @@ import notificationRoutes from './routes/notification.routes.js';
 import storyRoutes from './routes/story.routes.js';
 import callRoutes from './routes/call.routes.js';
 import communityRoutes from './routes/community.routes.js';
+import collectionRoutes from './routes/collection.routes.js';
+import highlightRoutes from './routes/highlight.routes.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -43,6 +45,8 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/stories', storyRoutes);
 app.use('/api/calls', callRoutes);
 app.use('/api/communities', communityRoutes);
+app.use('/api/collections', collectionRoutes);
+app.use('/api/highlights', highlightRoutes);
 
 app.use((err, _req, res, _next) => {
   console.error(err);
@@ -122,6 +126,36 @@ async function start() {
     // one-off ALTER TYPE. IF NOT EXISTS makes it safe to run on every boot.
     await sequelize.query(`ALTER TYPE "enum_notifications_type" ADD VALUE IF NOT EXISTS 'follow_request'`);
     await sequelize.query(`ALTER TYPE "enum_notifications_type" ADD VALUE IF NOT EXISTS 'follow_accept'`);
+
+    const commentsTable = await sequelize.getQueryInterface().describeTable('comments');
+    if (!commentsTable.parentId) {
+      await sequelize.getQueryInterface().addColumn('comments', 'parentId', {
+        type: DataTypes.UUID,
+        allowNull: true,
+      });
+    }
+
+    const postsTable = await sequelize.getQueryInterface().describeTable('posts');
+    if (!postsTable.media) {
+      await sequelize.getQueryInterface().addColumn('posts', 'media', {
+        type: DataTypes.JSON,
+        allowNull: true,
+      });
+      // Backfill existing single-media posts into the new array column so
+      // old rows render as a one-item carousel instead of an empty one.
+      await sequelize.query(`
+        UPDATE posts SET media = json_build_array(json_build_object('url', "imageUrl", 'mediaType', "mediaType"))
+        WHERE "imageUrl" IS NOT NULL AND media IS NULL
+      `);
+    }
+
+    const savesTable = await sequelize.getQueryInterface().describeTable('saves');
+    if (!savesTable.collectionId) {
+      await sequelize.getQueryInterface().addColumn('saves', 'collectionId', {
+        type: DataTypes.UUID,
+        allowNull: true,
+      });
+    }
 
     console.log('Database connected and synced.');
   } catch (err) {

@@ -122,6 +122,14 @@ export async function updatePassword(req, res) {
   return res.json({ message: 'Password updated' });
 }
 
+// Resolves a bare @username (e.g. from a clicked mention in a caption or
+// comment) to the user's id, so the client can navigate to /profile/:id.
+export async function getByUsername(req, res) {
+  const user = await User.findOne({ where: { username: req.params.username } });
+  if (!user) return res.status(404).json({ message: 'User not found' });
+  return res.json(publicUser(user));
+}
+
 export async function searchUsers(req, res) {
   const q = String(req.query.q || '').trim();
   if (!q) return res.json([]);

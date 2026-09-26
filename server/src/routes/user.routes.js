@@ -13,6 +13,7 @@ router.patch('/me/email', userController.updateEmail);
 router.patch('/me/password', userController.updatePassword);
 router.get('/me/activity', userController.getMyActivity);
 router.get('/search', userController.searchUsers);
+router.get('/by-username/:username', userController.getByUsername);
 router.get('/suggestions', userController.getSuggestions);
 router.get('/:id/profile', userController.getProfile);
 router.get('/:id/posts', getUserPosts);

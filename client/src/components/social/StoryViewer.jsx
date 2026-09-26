@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
 import { viewStory, deleteStory, fetchStoryViewers } from '../../api/stories.api';
+import { createConversation } from '../../api/chat.api';
+import { getSocket } from '../../socket/socket';
+import { useChatStore } from '../../store/chatStore';
 import { resolveMediaUrl } from '../../utils/media';
 
 const IMAGE_DURATION = 5000;
@@ -13,13 +17,23 @@ function timeAgo(dateStr) {
 }
 
 export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose, onStoryDeleted }) {
+  const navigate = useNavigate();
+  const upsertConversation = useChatStore((s) => s.upsertConversation);
+  const setActiveConversation = useChatStore((s) => s.setActiveConversation);
+
   const [groupIndex, setGroupIndex] = useState(startGroupIndex);
   const [storyIndex, setStoryIndex] = useState(0);
   const [progress, setProgress] = useState(0);
   const [viewers, setViewers] = useState(null);
   const [showViewers, setShowViewers] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replySent, setReplySent] = useState(false);
   const videoRef = useRef(null);
   const rafRef = useRef(null);
+  const typingRef = useRef(false);
+  const pauseStartRef = useRef(null);
+  const pausedDurationRef = useRef(0);
+  const startRef = useRef(0);
 
   const group = groups[groupIndex];
   const story = group?.stories[storyIndex];
@@ -28,6 +42,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
   const goNext = useCallback(() => {
     setShowViewers(false);
     setViewers(null);
+    setReplySent(false);
     if (storyIndex < group.stories.length - 1) {
       setStoryIndex((i) => i + 1);
     } else if (groupIndex < groups.length - 1) {
@@ -41,6 +56,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
   const goPrev = useCallback(() => {
     setShowViewers(false);
     setViewers(null);
+    setReplySent(false);
     if (storyIndex > 0) {
       setStoryIndex((i) => i - 1);
     } else if (groupIndex > 0) {
@@ -62,9 +78,22 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
     cancelAnimationFrame(rafRef.current);
     if (!story || story.mediaType === 'video') return undefined;
 
-    const start = performance.now();
+    startRef.current = performance.now();
+    pausedDurationRef.current = 0;
+    pauseStartRef.current = null;
+
     const tick = (now) => {
-      const pct = Math.min(100, ((now - start) / IMAGE_DURATION) * 100);
+      if (typingRef.current) {
+        if (pauseStartRef.current === null) pauseStartRef.current = now;
+        rafRef.current = requestAnimationFrame(tick);
+        return;
+      }
+      if (pauseStartRef.current !== null) {
+        pausedDurationRef.current += now - pauseStartRef.current;
+        pauseStartRef.current = null;
+      }
+      const elapsed = now - startRef.current - pausedDurationRef.current;
+      const pct = Math.min(100, (elapsed / IMAGE_DURATION) * 100);
       setProgress(pct);
       if (pct >= 100) {
         goNext();
@@ -79,6 +108,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
 
   useEffect(() => {
     const onKey = (e) => {
+      if (typingRef.current) return;
       if (e.key === 'Escape') onClose();
       if (e.key === 'ArrowRight') goNext();
       if (e.key === 'ArrowLeft') goPrev();
@@ -102,6 +132,35 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
     await deleteStory(story.id);
     onStoryDeleted(story.id);
     onClose();
+  };
+
+  const setTyping = (value) => {
+    typingRef.current = value;
+    videoRef.current?.[value ? 'pause' : 'play']?.();
+  };
+
+  const submitReply = async (e) => {
+    e.preventDefault();
+    if (!replyText.trim()) return;
+    const conversation = await createConversation({ type: 'direct', participantIds: [group.author.id] });
+    upsertConversation(conversation);
+    const socket = getSocket();
+    socket?.emit('message:send', {
+      conversationId: conversation.id,
+      type: 'text',
+      content: `Replied to your story: ${replyText.trim()}`,
+    });
+    setReplyText('');
+    setReplySent(true);
+    setTyping(false);
+  };
+
+  const openConversation = () => {
+    createConversation({ type: 'direct', participantIds: [group.author.id] }).then((conversation) => {
+      upsertConversation(conversation);
+      setActiveConversation(conversation.id);
+      navigate('/chat');
+    });
   };
 
   if (!group || !story) return null;
@@ -154,7 +213,7 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
         )}
 
         {story.caption && (
-          <p className="absolute bottom-16 left-3 right-3 z-20 text-white text-sm bg-black/30 rounded-lg px-3 py-2">
+          <p className="absolute bottom-24 left-3 right-3 z-20 text-white text-sm bg-black/30 rounded-lg px-3 py-2">
             {story.caption}
           </p>
         )}
@@ -166,6 +225,39 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
           >
             👁 Viewers{viewers ? ` (${viewers.length})` : ''}
           </button>
+        )}
+
+        {!isMine && (
+          <form onSubmit={submitReply} className="absolute bottom-3 left-3 right-3 z-20 flex items-center gap-2">
+            <input
+              value={replyText}
+              onChange={(e) => setReplyText(e.target.value)}
+              onFocus={() => setTyping(true)}
+              onBlur={() => !replyText && setTyping(false)}
+              placeholder={`Reply to ${group.author.name}...`}
+              className="flex-1 bg-black/40 border border-white/30 rounded-full px-4 py-2 text-sm text-white placeholder:text-white/60 outline-none focus:border-white"
+            />
+            {replyText ? (
+              <button type="submit" className="text-white shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
+                </svg>
+              </button>
+            ) : (
+              <button type="button" onClick={openConversation} title="Send a message" className="text-white shrink-0">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                  <path
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                    d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.6L4 20l1.1-4.4C4.4 14.5 4 13.3 4 12Z"
+                  />
+                </svg>
+              </button>
+            )}
+          </form>
+        )}
+        {replySent && (
+          <p className="absolute bottom-14 left-3 z-20 text-white/80 text-xs">Reply sent.</p>
         )}
 
         {showViewers && (
@@ -186,8 +278,8 @@ export default function StoryViewer({ groups, startGroupIndex, myUserId, onClose
           </div>
         )}
 
-        <button aria-label="Previous" onClick={goPrev} className="absolute left-0 top-0 h-full w-1/3 z-10" />
-        <button aria-label="Next" onClick={goNext} className="absolute right-0 top-0 h-full w-1/3 z-10" />
+        <button aria-label="Previous" onClick={goPrev} className="absolute left-0 top-0 h-1/3 w-1/3 z-10" />
+        <button aria-label="Next" onClick={goNext} className="absolute right-0 top-0 h-1/3 w-1/3 z-10" />
       </div>
     </div>
   );

@@ -6,3 +6,4 @@ export const updateUsername = (username) => http.patch('/users/me/username', { u
 export const updateEmail = (email) => http.patch('/users/me/email', { email }).then((r) => r.data);
 export const updatePassword = (payload) => http.patch('/users/me/password', payload).then((r) => r.data);
 export const fetchMe = () => http.get('/users/me').then((r) => r.data);
+export const fetchUserByUsername = (username) => http.get(`/users/by-username/${username}`).then((r) => r.data);

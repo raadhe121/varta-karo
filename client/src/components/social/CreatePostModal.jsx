@@ -52,6 +52,11 @@ export default function CreatePostModal({ onClose, onCreated }) {
   const user = useAuthStore((s) => s.user);
   const [step, setStep] = useState('select'); // select | edit | share
   const [file, setFile] = useState(null);
+  // Set instead of `file` when 2+ items are picked -- a carousel post skips
+  // the single-image crop/filter editor (too much UI for N images at once)
+  // and goes straight to captioning, uploading each item as-is.
+  const [files, setFiles] = useState(null);
+  const [carouselIndex, setCarouselIndex] = useState(0);
   const [previewUrl, setPreviewUrl] = useState(null);
   const [mediaType, setMediaType] = useState(null);
   const [aspect, setAspect] = useState('original');
@@ -67,30 +72,53 @@ export default function CreatePostModal({ onClose, onCreated }) {
 
   const filter = useMemo(() => FILTERS.find((f) => f.id === filterId) || FILTERS[0], [filterId]);
 
-  const pickFile = (picked) => {
-    if (!picked) return;
-    setFile(picked);
-    setPreviewUrl(URL.createObjectURL(picked));
-    setMediaType(picked.type.startsWith('video/') ? 'video' : 'image');
-    setStep('edit');
+  const pickFiles = (pickedList) => {
+    const picked = Array.from(pickedList || []);
+    if (picked.length === 0) return;
+    if (picked.length === 1) {
+      setFile(picked[0]);
+      setFiles(null);
+      setPreviewUrl(URL.createObjectURL(picked[0]));
+      setMediaType(picked[0].type.startsWith('video/') ? 'video' : 'image');
+      setStep('edit');
+      return;
+    }
+    setFile(null);
+    setFiles(picked.slice(0, 10));
+    setCarouselIndex(0);
+    setStep('share');
   };
 
   const handleInputChange = (e) => {
-    const picked = e.target.files?.[0];
+    const picked = e.target.files;
+    pickFiles(picked);
     e.target.value = '';
-    pickFile(picked);
   };
 
   const handleDrop = (e) => {
     e.preventDefault();
     setDragging(false);
-    pickFile(e.dataTransfer.files?.[0]);
+    pickFiles(e.dataTransfer.files);
   };
 
   const handleShare = async () => {
     setBusy(true);
     setError('');
     try {
+      if (files) {
+        const uploaded = await Promise.all(
+          files.map(async (f) => {
+            const res = await uploadMedia(f);
+            return { url: res.url, mediaType: f.type.startsWith('video/') ? 'video' : 'image' };
+          })
+        );
+        const post = await createPost({ content: caption.trim() || undefined, media: uploaded, visibility });
+        window.dispatchEvent(new CustomEvent('post:created', { detail: post }));
+        onCreated?.(post);
+        onClose();
+        return;
+      }
+
       let uploadFile = file;
       if (mediaType === 'image' && imgRef.current) {
         const blob = await renderImageToBlob(imgRef.current, { aspect, filterCss: filter.css });
@@ -123,7 +151,7 @@ export default function CreatePostModal({ onClose, onCreated }) {
         <div className="flex items-center justify-between px-4 py-3 border-b border-line shrink-0">
           {step !== 'select' ? (
             <button
-              onClick={() => setStep(step === 'share' ? 'edit' : 'select')}
+              onClick={() => setStep(step === 'share' && !files ? 'edit' : 'select')}
               className="text-ink-soft hover:text-ink text-sm font-semibold"
             >
               Back
@@ -164,7 +192,14 @@ export default function CreatePostModal({ onClose, onCreated }) {
                 <rect x="8" y="7" width="14" height="14" rx="2" />
               </svg>
               <p className="text-ink-soft text-sm">Drag photos and videos here</p>
-              <input type="file" ref={fileInputRef} className="hidden" accept="image/*,video/*" onChange={handleInputChange} />
+              <input
+                type="file"
+                ref={fileInputRef}
+                className="hidden"
+                accept="image/*,video/*"
+                multiple
+                onChange={handleInputChange}
+              />
               <button
                 onClick={() => fileInputRef.current?.click()}
                 className="px-4 py-2 rounded-xl bg-accent text-white font-semibold text-sm"
@@ -242,8 +277,45 @@ export default function CreatePostModal({ onClose, onCreated }) {
 
           {step === 'share' && (
             <div className="flex flex-col sm:flex-row">
-              <div className="flex-1 bg-black flex items-center justify-center min-h-[280px] max-h-[50vh]">
-                {mediaType === 'video' ? (
+              <div className="relative flex-1 bg-black flex items-center justify-center min-h-[280px] max-h-[50vh]">
+                {files ? (
+                  <>
+                    {files[carouselIndex].type.startsWith('video/') ? (
+                      <video src={URL.createObjectURL(files[carouselIndex])} controls className="max-h-[50vh] max-w-full" />
+                    ) : (
+                      <img
+                        src={URL.createObjectURL(files[carouselIndex])}
+                        alt="preview"
+                        className="max-h-[50vh] max-w-full object-contain"
+                      />
+                    )}
+                    {files.length > 1 && (
+                      <>
+                        {carouselIndex > 0 && (
+                          <button
+                            type="button"
+                            onClick={() => setCarouselIndex((i) => i - 1)}
+                            className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center"
+                          >
+                            &larr;
+                          </button>
+                        )}
+                        {carouselIndex < files.length - 1 && (
+                          <button
+                            type="button"
+                            onClick={() => setCarouselIndex((i) => i + 1)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/50 text-white flex items-center justify-center"
+                          >
+                            &rarr;
+                          </button>
+                        )}
+                        <div className="absolute top-3 right-3 bg-black/50 text-white text-xs font-semibold rounded-full px-2 py-0.5">
+                          {carouselIndex + 1}/{files.length}
+                        </div>
+                      </>
+                    )}
+                  </>
+                ) : mediaType === 'video' ? (
                   <video src={previewUrl} controls className="max-h-[50vh] max-w-full" />
                 ) : (
                   <img

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../common/Avatar';
+import RichText from '../common/RichText';
 import FollowButton from '../social/FollowButton';
 import { toggleLike, toggleSave, sharePost } from '../../api/posts.api';
 import { useAuthStore } from '../../store/authStore';
@@ -213,7 +214,7 @@ export default function ReelItem({ reel, isActive, muted, onToggleMute, onOpenCo
         <div className="absolute left-3 right-3 bottom-3 text-white">
           {caption && (
             <p className="text-sm drop-shadow whitespace-pre-wrap mb-2">
-              {shownCaption}
+              <RichText text={shownCaption} />
               {isLong && !expanded && (
                 <button onClick={() => setExpanded(true)} className="font-semibold ml-1">
                   more

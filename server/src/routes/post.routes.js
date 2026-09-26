@@ -8,6 +8,7 @@ router.use(requireAuth);
 router.get('/feed', postController.getFeed);
 router.get('/discover', postController.getDiscoverPosts);
 router.get('/reels', postController.getReels);
+router.get('/saved', postController.listSavedPosts);
 router.post('/', postController.createPost);
 router.delete('/:id', postController.deletePost);
 router.post('/:id/like', postController.toggleLike);

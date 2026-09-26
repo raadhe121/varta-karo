@@ -1,10 +1,14 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import Avatar from '../common/Avatar';
-import { toggleLike, toggleSave, fetchComments, addComment, deletePost } from '../../api/posts.api';
+import RichText from '../common/RichText';
+import { toggleLike, toggleSave, fetchComments, addComment, deletePost, sharePost } from '../../api/posts.api';
+import { fetchConversations } from '../../api/chat.api';
+import { getSocket } from '../../socket/socket';
 import { useAuthStore } from '../../store/authStore';
 import { resolveMediaUrl } from '../../utils/media';
 import FollowButton from './FollowButton';
+import SaveToCollectionModal from './SaveToCollectionModal';
 
 // Instagram-style feed video: no native control bar (no scrubber, timer,
 // fullscreen/volume/menu buttons) -- just the video, muted+looping by
@@ -86,6 +90,116 @@ function FeedVideo({ src }) {
   );
 }
 
+// Renders a post's `media` array -- a single item shows as before, 2+ items
+// become a swipeable carousel with dot indicators and prev/next arrows.
+function PostMedia({ media }) {
+  const [index, setIndex] = useState(0);
+  if (!media || media.length === 0) return null;
+
+  const item = media[index];
+  const go = (delta) => setIndex((i) => Math.max(0, Math.min(media.length - 1, i + delta)));
+
+  return (
+    <div className="relative">
+      {item.mediaType === 'video' ? (
+        <FeedVideo src={resolveMediaUrl(item.url)} />
+      ) : (
+        <img src={resolveMediaUrl(item.url)} alt="" className="w-full max-h-[470px] object-cover" />
+      )}
+      {media.length > 1 && (
+        <>
+          {index > 0 && (
+            <button
+              onClick={() => go(-1)}
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m15 18-6-6 6-6" />
+              </svg>
+            </button>
+          )}
+          {index < media.length - 1 && (
+            <button
+              onClick={() => go(1)}
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-black/40 text-white flex items-center justify-center"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m9 18 6-6-6-6" />
+              </svg>
+            </button>
+          )}
+          <div className="absolute top-3 right-3 bg-black/40 text-white text-xs font-semibold rounded-full px-2 py-0.5">
+            {index + 1}/{media.length}
+          </div>
+          <div className="absolute bottom-3 left-0 right-0 flex justify-center gap-1.5">
+            {media.map((_, i) => (
+              <span key={i} className={`h-1.5 w-1.5 rounded-full ${i === index ? 'bg-white' : 'bg-white/40'}`} />
+            ))}
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+function ShareModal({ post, onClose, onShared }) {
+  const [conversations, setConversations] = useState(null);
+  const [sentTo, setSentTo] = useState(null);
+
+  useEffect(() => {
+    fetchConversations().then(setConversations);
+  }, []);
+
+  const shareToConversation = (conversationId) => {
+    const socket = getSocket();
+    const link = `${window.location.origin}/profile/${post.author.id}`;
+    socket?.emit('message:send', {
+      conversationId,
+      type: 'text',
+      content: `Shared ${post.author.name}'s post${post.content ? `: "${post.content.slice(0, 60)}"` : ''} ${link}`,
+    });
+    sharePost(post.id);
+    setSentTo(conversationId);
+    onShared?.();
+  };
+
+  return (
+    <div className="fixed inset-0 z-[90] bg-black/60 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-paper rounded-2xl w-full max-w-sm max-h-[70vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-4 py-3 border-b border-line">
+          <p className="font-semibold">Share to</p>
+          <button onClick={onClose} className="text-ink-soft text-xl leading-none">
+            &times;
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto p-2">
+          {conversations === null ? (
+            <p className="text-sm text-ink-soft text-center py-6">Loading...</p>
+          ) : conversations.length === 0 ? (
+            <p className="text-sm text-ink-soft text-center py-6">Follow each other with someone to share posts via chat.</p>
+          ) : (
+            conversations.map((c) => {
+              const other = c.type === 'direct' ? c.participants.find((p) => p.id !== post.author.id) : null;
+              const label = c.type === 'group' ? c.name : other?.name || 'Conversation';
+              return (
+                <button
+                  key={c.id}
+                  onClick={() => shareToConversation(c.id)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl hover:bg-paper-soft text-left"
+                >
+                  <Avatar user={c.type === 'group' ? { name: c.name } : other} size="sm" />
+                  <span className="flex-1 text-sm font-medium truncate">{label}</span>
+                  {sentTo === c.id && <span className="text-xs text-accent font-semibold">Sent</span>}
+                </button>
+              );
+            })
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function timeAgo(dateStr) {
   const diffMin = Math.floor((Date.now() - new Date(dateStr).getTime()) / 60000);
   if (diffMin < 1) return 'just now';
@@ -146,6 +260,23 @@ function GlobeIcon() {
   );
 }
 
+function Comment({ comment, onReply }) {
+  return (
+    <div className="flex items-start gap-2">
+      <Avatar user={comment.author} size="sm" />
+      <div>
+        <div className="bg-paper-soft rounded-xl px-3 py-1.5 text-sm">
+          <span className="font-semibold mr-1">{comment.author.name}</span>
+          <RichText text={comment.content} />
+        </div>
+        <button onClick={() => onReply(comment)} className="text-xs text-ink-soft font-semibold mt-1 ml-1 hover:text-ink">
+          Reply
+        </button>
+      </div>
+    </div>
+  );
+}
+
 export default function PostCard({ post, onDeleted, showFollowButton = false, allowDelete = false }) {
   const me = useAuthStore((s) => s.user);
   const myId = me?.id;
@@ -158,6 +289,11 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
   const [commentCount, setCommentCount] = useState(post.commentCount);
   const [followedByMe, setFollowedByMe] = useState(post.followedByMe);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [replyTo, setReplyTo] = useState(null);
+  const [saveModalOpen, setSaveModalOpen] = useState(false);
+  const [shareModalOpen, setShareModalOpen] = useState(false);
+
+  const media = post.media?.length > 0 ? post.media : post.imageUrl ? [{ url: post.imageUrl, mediaType: post.mediaType }] : [];
 
   const handleLike = async () => {
     const res = await toggleLike(post.id);
@@ -165,9 +301,13 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
     setLikeCount(res.likeCount);
   };
 
-  const handleSave = async () => {
-    const res = await toggleSave(post.id);
-    setSaved(res.saved);
+  const handleSaveClick = async () => {
+    if (saved) {
+      const res = await toggleSave(post.id);
+      setSaved(res.saved);
+      return;
+    }
+    setSaveModalOpen(true);
   };
 
   const openComments = async () => {
@@ -180,11 +320,12 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
   const submitComment = async (e) => {
     e.preventDefault();
     if (!commentText.trim()) return;
-    const comment = await addComment(post.id, commentText.trim());
+    const comment = await addComment(post.id, commentText.trim(), replyTo?.id);
     setComments((prev) => [...(prev || []), comment]);
     setCommentCount((c) => c + 1);
     setCommentText('');
     setCommentsOpen(true);
+    setReplyTo(null);
   };
 
   const handleDelete = async () => {
@@ -193,8 +334,26 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
     onDeleted?.(post.id);
   };
 
+  const topLevelComments = (comments || []).filter((c) => !c.parentId);
+  const repliesByParent = (comments || []).reduce((acc, c) => {
+    if (c.parentId) (acc[c.parentId] ||= []).push(c);
+    return acc;
+  }, {});
+
   return (
     <div className="bg-paper border-b border-line overflow-hidden lg:rounded-2xl lg:border lg:mb-0">
+      {saveModalOpen && (
+        <SaveToCollectionModal
+          postId={post.id}
+          onClose={() => setSaveModalOpen(false)}
+          onSaved={() => {
+            setSaved(true);
+            setSaveModalOpen(false);
+          }}
+        />
+      )}
+      {shareModalOpen && <ShareModal post={post} onClose={() => setShareModalOpen(false)} />}
+
       <div className="flex items-center justify-between px-4 py-3">
         <Link to={`/profile/${post.author.id}`} className="flex items-center gap-2.5">
           <Avatar user={post.author} size="sm" />
@@ -239,13 +398,12 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
         )}
       </div>
 
-      {post.content && !post.imageUrl && <p className="text-sm whitespace-pre-wrap px-4 pb-3">{post.content}</p>}
-      {post.imageUrl &&
-        (post.mediaType === 'video' ? (
-          <FeedVideo src={resolveMediaUrl(post.imageUrl)} />
-        ) : (
-          <img src={resolveMediaUrl(post.imageUrl)} alt="" className="w-full max-h-[470px] object-cover" />
-        ))}
+      {post.content && media.length === 0 && (
+        <p className="text-sm whitespace-pre-wrap px-4 pb-3">
+          <RichText text={post.content} />
+        </p>
+      )}
+      <PostMedia media={media} />
 
       <div className="flex items-center justify-between px-4 pt-3 pb-1">
         <div className="flex items-center gap-4 lg:gap-5">
@@ -260,12 +418,15 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
             <CommentIcon />
             <span className="hidden lg:inline">Comment</span>
           </button>
-          <button className="flex items-center gap-1.5 text-sm font-medium text-ink hover:text-ink-soft">
+          <button
+            onClick={() => setShareModalOpen(true)}
+            className="flex items-center gap-1.5 text-sm font-medium text-ink hover:text-ink-soft"
+          >
             <ShareIcon />
             <span className="hidden lg:inline">Share</span>
           </button>
         </div>
-        <button onClick={handleSave} className={saved ? 'text-accent' : 'text-ink hover:text-ink-soft'}>
+        <button onClick={handleSaveClick} className={saved ? 'text-accent' : 'text-ink hover:text-ink-soft'}>
           <BookmarkIcon filled={saved} />
         </button>
       </div>
@@ -274,10 +435,10 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
         <p className="text-sm font-semibold">{likeCount > 0 ? `${likeCount} ${likeCount === 1 ? 'like' : 'likes'}` : 'Be the first to like this'}</p>
       </div>
 
-      {post.content && post.imageUrl && (
+      {post.content && media.length > 0 && (
         <p className="text-sm px-4 pb-1 whitespace-pre-wrap">
           <span className="font-semibold mr-1">{post.author.name}</span>
-          {post.content}
+          <RichText text={post.content} />
         </p>
       )}
 
@@ -287,28 +448,43 @@ export default function PostCard({ post, onDeleted, showFollowButton = false, al
         </button>
       )}
 
-      {commentsOpen && comments?.length > 0 && (
-        <div className="px-4 pb-2 space-y-2">
-          {comments.map((c) => (
-            <div key={c.id} className="flex items-start gap-2">
-              <Avatar user={c.author} size="sm" />
-              <div className="bg-paper-soft rounded-xl px-3 py-1.5 text-sm">
-                <span className="font-semibold mr-1">{c.author.name}</span>
-                {c.content}
-              </div>
+      {commentsOpen && topLevelComments.length > 0 && (
+        <div className="px-4 pb-2 space-y-3">
+          {topLevelComments.map((c) => (
+            <div key={c.id} className="space-y-2">
+              <Comment comment={c} onReply={setReplyTo} />
+              {(repliesByParent[c.id] || []).length > 0 && (
+                <div className="pl-8 space-y-2">
+                  {repliesByParent[c.id].map((r) => (
+                    <Comment key={r.id} comment={r} onReply={() => setReplyTo(c)} />
+                  ))}
+                </div>
+              )}
             </div>
           ))}
         </div>
       )}
 
-      <form onSubmit={submitComment} className="flex items-center gap-2 px-4 py-3 border-t border-line">
-        <Avatar user={me} size="sm" />
-        <input
-          className="flex-1 rounded-full bg-page border border-line px-4 py-2 text-sm outline-none focus:border-accent"
-          placeholder="Be the first to comment..."
-          value={commentText}
-          onChange={(e) => setCommentText(e.target.value)}
-        />
+      <form onSubmit={submitComment} className="px-4 py-3 border-t border-line">
+        {replyTo && (
+          <div className="flex items-center justify-between mb-2 text-xs text-ink-soft">
+            <span>
+              Replying to <span className="font-semibold">{replyTo.author.name}</span>
+            </span>
+            <button type="button" onClick={() => setReplyTo(null)} className="hover:text-ink">
+              Cancel
+            </button>
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <Avatar user={me} size="sm" />
+          <input
+            className="flex-1 rounded-full bg-page border border-line px-4 py-2 text-sm outline-none focus:border-accent"
+            placeholder={replyTo ? `Reply to ${replyTo.author.name}...` : 'Be the first to comment...'}
+            value={commentText}
+            onChange={(e) => setCommentText(e.target.value)}
+          />
+        </div>
       </form>
     </div>
   );

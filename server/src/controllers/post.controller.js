@@ -30,6 +30,7 @@ async function serializePost(post, viewerId, followingIds = null) {
     content: post.content,
     imageUrl: post.imageUrl,
     mediaType: post.mediaType,
+    media: post.media && post.media.length > 0 ? post.media : post.imageUrl ? [{ url: post.imageUrl, mediaType: post.mediaType }] : [],
     visibility: post.visibility,
     likeCount,
     likedByMe: Boolean(viewerLike),
@@ -145,22 +146,33 @@ export async function getUserPosts(req, res) {
 }
 
 export async function createPost(req, res) {
-  const { content, imageUrl, mediaType, visibility = 'public' } = req.body;
-  if (!content && !imageUrl) {
+  const { content, imageUrl, mediaType, media, visibility = 'public' } = req.body;
+
+  // `media` (a carousel: 1+ {url, mediaType} items) takes priority; falls
+  // back to the legacy single imageUrl/mediaType fields for old clients.
+  let items = Array.isArray(media) ? media.filter((m) => m && m.url) : [];
+  if (items.length === 0 && imageUrl) {
+    items = [{ url: imageUrl, mediaType: mediaType || 'image' }];
+  }
+  if (items.length > 10) {
+    return res.status(400).json({ message: 'A post can have at most 10 media items' });
+  }
+  if (items.some((m) => !['image', 'video'].includes(m.mediaType))) {
+    return res.status(400).json({ message: 'Invalid mediaType' });
+  }
+  if (!content && items.length === 0) {
     return res.status(400).json({ message: 'A post needs content or media' });
   }
   if (!['public', 'friends', 'only_me'].includes(visibility)) {
     return res.status(400).json({ message: 'Invalid visibility' });
   }
-  if (mediaType && !['image', 'video'].includes(mediaType)) {
-    return res.status(400).json({ message: 'Invalid mediaType' });
-  }
 
   const post = await Post.create({
     authorId: req.userId,
     content: content ?? null,
-    imageUrl: imageUrl ?? null,
-    mediaType: imageUrl ? mediaType || 'image' : null,
+    imageUrl: items[0]?.url ?? null,
+    mediaType: items[0]?.mediaType ?? null,
+    media: items,
     visibility,
   });
   const full = await Post.findByPk(post.id, { include: [{ model: User, as: 'author' }] });
@@ -205,15 +217,35 @@ export async function toggleSave(req, res) {
     return res.status(403).json({ message: 'Not allowed to view this post' });
   }
 
+  const { collectionId } = req.body || {};
   const existing = await Save.findOne({ where: { postId: post.id, userId: req.userId } });
   if (existing) {
     await existing.destroy();
   } else {
-    await Save.create({ postId: post.id, userId: req.userId });
+    await Save.create({ postId: post.id, userId: req.userId, collectionId: collectionId || null });
   }
 
   const saveCount = await Save.count({ where: { postId: post.id } });
   return res.json({ saved: !existing, saveCount });
+}
+
+// Everything the caller has saved, optionally narrowed to one collection
+// (or the implicit "All posts" bucket when collectionId is explicitly
+// "none"). Returns full serialized posts, newest-saved first.
+export async function listSavedPosts(req, res) {
+  const { collectionId } = req.query;
+  const where = { userId: req.userId };
+  if (collectionId === 'none') where.collectionId = null;
+  else if (collectionId) where.collectionId = collectionId;
+
+  const saves = await Save.findAll({
+    where,
+    include: [{ model: Post, as: 'post', include: [{ model: User, as: 'author' }] }],
+    order: [['createdAt', 'DESC']],
+  });
+
+  const posts = saves.filter((s) => s.post).map((s) => s.post);
+  return res.json(await Promise.all(posts.map((p) => serializePost(p, req.userId))));
 }
 
 export async function sharePost(req, res) {
@@ -242,11 +274,15 @@ export async function listComments(req, res) {
     limit: 200,
   });
 
+  // Flat list, one level of nesting -- the client groups replies under
+  // their parentId (a reply's own replies are already flattened to point
+  // at the original top-level comment, so no deeper recursion needed).
   return res.json(
     comments.map((c) => ({
       id: c.id,
       content: c.content,
       author: publicUser(c.author),
+      parentId: c.parentId,
       createdAt: c.createdAt,
     }))
   );
@@ -260,13 +296,29 @@ export async function addComment(req, res) {
   }
 
   const { content } = req.body;
+  let { parentId } = req.body;
   if (!content) return res.status(400).json({ message: 'content is required' });
 
-  const comment = await Comment.create({ postId: post.id, authorId: req.userId, content });
-  await createNotification(
-    { recipientId: post.authorId, actorId: req.userId, type: 'comment', postId: post.id },
-    req.app.get('io')
-  );
+  let parent = null;
+  if (parentId) {
+    parent = await Comment.findOne({ where: { id: parentId, postId: post.id } });
+    if (!parent) return res.status(404).json({ message: 'Comment not found' });
+    // Flatten reply-to-a-reply onto the original top-level comment.
+    if (parent.parentId) parentId = parent.parentId;
+  }
+
+  const comment = await Comment.create({ postId: post.id, authorId: req.userId, content, parentId: parentId || null });
+  const io = req.app.get('io');
+  await createNotification({ recipientId: post.authorId, actorId: req.userId, type: 'comment', postId: post.id }, io);
+  if (parent && parent.authorId !== post.authorId) {
+    await createNotification({ recipientId: parent.authorId, actorId: req.userId, type: 'comment', postId: post.id }, io);
+  }
   const author = await User.findByPk(req.userId);
-  return res.status(201).json({ id: comment.id, content: comment.content, author: publicUser(author), createdAt: comment.createdAt });
+  return res.status(201).json({
+    id: comment.id,
+    content: comment.content,
+    author: publicUser(author),
+    parentId: comment.parentId,
+    createdAt: comment.createdAt,
+  });
 }

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useSocket } from '../hooks/useSocket';
 import IncomingCallModal from '../components/call/IncomingCallModal';
 import ActiveCallOverlay from '../components/call/ActiveCallOverlay';
@@ -81,11 +81,12 @@ function PersonRow({ person, query, onFollowChange }) {
 
 export default function SearchPage() {
   useSocket();
-  const [query, setQuery] = useState('');
+  const [searchParams] = useSearchParams();
+  const [query, setQuery] = useState(searchParams.get('q') || '');
   const [explore, setExplore] = useState(null);
   const [results, setResults] = useState(null);
   const [searching, setSearching] = useState(false);
-  const [filter, setFilter] = useState('all');
+  const [filter, setFilter] = useState(searchParams.get('q')?.startsWith('#') ? 'posts' : 'all');
   const [composerOpen, setComposerOpen] = useState(false);
   const debounceRef = useRef(null);
 

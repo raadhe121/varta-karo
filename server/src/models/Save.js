@@ -17,6 +17,11 @@ export const Save = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    // Null = the default "All posts" bucket every user implicitly has.
+    collectionId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
   },
   {
     tableName: 'saves',

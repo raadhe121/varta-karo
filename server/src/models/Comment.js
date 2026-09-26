@@ -17,6 +17,13 @@ export const Comment = sequelize.define(
       type: DataTypes.UUID,
       allowNull: false,
     },
+    // One level of threading -- a reply's parentId points at a top-level
+    // comment. A reply to a reply still points at the original top-level
+    // comment (flattened), matching Instagram's single-level reply UI.
+    parentId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
     content: {
       type: DataTypes.TEXT,
       allowNull: false,

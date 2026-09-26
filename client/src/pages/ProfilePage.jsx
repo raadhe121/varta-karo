@@ -4,7 +4,7 @@ import { useAuthStore } from '../store/authStore';
 import { useChatStore } from '../store/chatStore';
 import { useSocket } from '../hooks/useSocket';
 import { fetchProfile } from '../api/social.api';
-import { fetchUserPosts } from '../api/posts.api';
+import { fetchUserPosts, fetchSavedPosts } from '../api/posts.api';
 import { updateMe } from '../api/users.api';
 import { createConversation, uploadMedia } from '../api/chat.api';
 import IncomingCallModal from '../components/call/IncomingCallModal';
@@ -20,6 +20,7 @@ import PostCard from '../components/social/PostCard';
 import ActivityLog from '../components/social/ActivityLog';
 import CreatePostModal from '../components/social/CreatePostModal';
 import StoryComposerModal from '../components/social/StoryComposerModal';
+import HighlightsRow from '../components/social/HighlightsRow';
 import { resolveMediaUrl } from '../utils/media';
 
 function LocationIcon() {
@@ -74,6 +75,7 @@ export default function ProfilePage() {
   const [coverUploading, setCoverUploading] = useState(false);
   const [pendingStory, setPendingStory] = useState(null);
   const [storyUploading, setStoryUploading] = useState(false);
+  const [savedPosts, setSavedPosts] = useState(null);
 
   const avatarInputRef = useRef(null);
   const coverInputRef = useRef(null);
@@ -92,6 +94,9 @@ export default function ProfilePage() {
   useEffect(() => {
     if ((tab === 'posts' || tab === 'media') && profile) {
       fetchUserPosts(targetId).then(setPosts);
+    }
+    if (tab === 'saved' && profile?.isSelf) {
+      fetchSavedPosts().then(setSavedPosts);
     }
   }, [tab, profile, targetId]);
 
@@ -335,6 +340,8 @@ export default function ProfilePage() {
           {profile.bio && <p className="text-sm mt-2.5 max-w-md leading-relaxed">{profile.bio}</p>}
         </div>
 
+        <HighlightsRow userId={profile.id} isSelf={profile.isSelf} />
+
         <div className="grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6 mt-6">
           <div className="space-y-4">
             <div className="rounded-2xl bg-paper border border-line p-5">
@@ -478,14 +485,24 @@ export default function ProfilePage() {
                 Media
               </button>
               {profile.isSelf && (
-                <button
-                  className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
-                    tab === 'activity' ? 'border-accent text-accent' : 'border-transparent text-ink-soft hover:text-ink'
-                  }`}
-                  onClick={() => setTab('activity')}
-                >
-                  Activity
-                </button>
+                <>
+                  <button
+                    className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                      tab === 'saved' ? 'border-accent text-accent' : 'border-transparent text-ink-soft hover:text-ink'
+                    }`}
+                    onClick={() => setTab('saved')}
+                  >
+                    Saved
+                  </button>
+                  <button
+                    className={`px-4 py-2.5 text-sm font-semibold border-b-2 -mb-px transition-colors ${
+                      tab === 'activity' ? 'border-accent text-accent' : 'border-transparent text-ink-soft hover:text-ink'
+                    }`}
+                    onClick={() => setTab('activity')}
+                  >
+                    Activity
+                  </button>
+                </>
               )}
             </div>
 
@@ -548,6 +565,23 @@ export default function ProfilePage() {
                       />
                     ))}
                   </div>
+                ))}
+              {tab === 'saved' &&
+                (savedPosts === null ? (
+                  <p className="text-sm text-ink-soft text-center py-10">Loading...</p>
+                ) : savedPosts.length === 0 ? (
+                  <div className="rounded-2xl bg-paper border border-line p-10 text-center">
+                    <p className="text-3xl mb-2">🔖</p>
+                    <p className="text-sm text-ink-soft">Nothing saved yet. Tap the bookmark icon on any post to save it here.</p>
+                  </div>
+                ) : (
+                  savedPosts.map((post) => (
+                    <PostCard
+                      key={post.id}
+                      post={post}
+                      onDeleted={(id) => setSavedPosts((prev) => prev.filter((p) => p.id !== id))}
+                    />
+                  ))
                 ))}
               {tab === 'activity' && <ActivityLog />}
             </div>
