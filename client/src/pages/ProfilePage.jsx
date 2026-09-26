@@ -182,7 +182,7 @@ export default function ProfilePage() {
   if (!profile) {
     return shell(
       <div className="px-4 lg:px-0">
-        <div className="h-56 w-full rounded-3xl bg-gradient-to-br from-accent-soft to-paper-soft animate-pulse" />
+        <div className="h-36 sm:h-56 w-full rounded-3xl bg-gradient-to-br from-accent-soft to-paper-soft animate-pulse" />
         <div className="flex items-end justify-between -mt-14 relative z-10 px-4">
           <div className="h-28 w-28 rounded-full ring-4 ring-page bg-line animate-pulse" />
           <div className="h-9 w-28 mb-2 rounded-xl bg-paper-soft animate-pulse" />
@@ -226,7 +226,7 @@ export default function ProfilePage() {
       <input type="file" ref={storyInputRef} className="hidden" accept="image/*,video/*" onChange={handleStoryFile} />
 
       <div className="px-4 lg:px-0">
-        <div className="relative h-56 w-full rounded-3xl bg-gradient-to-br from-[#4c3a8f] to-[#241a4d] overflow-hidden">
+        <div className="relative h-36 sm:h-56 w-full rounded-3xl bg-gradient-to-br from-[#4c3a8f] to-[#241a4d] overflow-hidden">
           {profile.coverPhotoUrl ? (
             <img src={resolveMediaUrl(profile.coverPhotoUrl)} alt="" className="absolute inset-0 h-full w-full object-cover" />
           ) : (
@@ -255,8 +255,8 @@ export default function ProfilePage() {
           )}
         </div>
 
-        <div className="flex items-end justify-between -mt-14 relative z-10">
-          <div className="relative">
+        <div className="flex items-end justify-between flex-wrap gap-y-2 relative z-10">
+          <div className="relative -mt-14 shrink-0">
             <div className="rounded-full ring-4 ring-page shadow-lg">
               <Avatar user={profile} size="lg" />
             </div>
@@ -271,7 +271,7 @@ export default function ProfilePage() {
             )}
           </div>
           {profile.isSelf ? (
-            <div className="flex items-center gap-2 mb-2">
+            <div className="flex items-center gap-2 flex-wrap">
               <Button className="text-sm" onClick={() => navigate('/settings')}>
                 <span className="mr-1">&#9998;</span> Edit profile
               </Button>
@@ -281,7 +281,7 @@ export default function ProfilePage() {
               <button
                 onClick={copyProfileLink}
                 title="Copy profile link"
-                className="h-9 w-9 rounded-xl border border-line flex items-center justify-center text-ink-soft hover:bg-paper-soft"
+                className="h-9 w-9 rounded-xl border border-line flex items-center justify-center text-ink-soft hover:bg-paper-soft shrink-0"
               >
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M22 2 11 13M22 2l-7 20-4-9-9-4 20-7Z" />
@@ -289,7 +289,7 @@ export default function ProfilePage() {
               </button>
             </div>
           ) : (
-            <div className="flex gap-2 mb-2">
+            <div className="flex gap-2 flex-wrap">
               <FollowButton profile={profile} onChange={load} />
               {isMutual && (
                 <Button className="text-sm" disabled={chatLoading} onClick={startChat}>

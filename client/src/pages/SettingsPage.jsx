@@ -663,6 +663,15 @@ export default function SettingsPage() {
   const [profile, setProfile] = useState(null);
   const [section, setSection] = useState('profile');
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  // Below lg there's only room for one column at a time: this tracks
+  // whether the mobile view is showing the section list or a section's
+  // content (both stay visible together at lg+, ignoring this).
+  const [mobileNavOpen, setMobileNavOpen] = useState(true);
+
+  const selectSection = (id) => {
+    setSection(id);
+    setMobileNavOpen(false);
+  };
 
   useEffect(() => {
     if (myId) fetchProfile(myId).then(setProfile);
@@ -684,7 +693,9 @@ export default function SettingsPage() {
       <ActiveCallOverlay />
       <HomeTopBar showCreate={false} searchPlaceholder="Search settings" />
 
-      <aside className="w-72 shrink-0 lg:fixed lg:left-0 lg:top-16 lg:bottom-0 lg:overflow-y-auto px-6 py-6">
+      <aside
+        className={`${mobileNavOpen ? 'block' : 'hidden'} lg:block w-full lg:w-72 shrink-0 lg:fixed lg:left-0 lg:top-16 lg:bottom-0 lg:overflow-y-auto px-4 lg:px-6 py-6`}
+      >
           <Link to="/profile" className="flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink mb-4">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
               <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
@@ -696,7 +707,7 @@ export default function SettingsPage() {
             {SECTIONS.map((s) => (
               <button
                 key={s.id}
-                onClick={() => setSection(s.id)}
+                onClick={() => selectSection(s.id)}
                 className={`w-full flex items-start gap-3 text-left px-3.5 py-2.5 rounded-xl transition-colors ${
                   section === s.id ? 'bg-accent-soft text-accent' : 'text-ink hover:bg-paper-soft'
                 }`}
@@ -722,8 +733,17 @@ export default function SettingsPage() {
           </button>
         </aside>
 
-      <div className="flex-1 flex justify-center gap-8 px-6 py-6 lg:pl-72">
+      <div className={`${mobileNavOpen ? 'hidden' : 'flex'} lg:flex flex-1 justify-center gap-8 px-4 lg:px-6 py-6 lg:pl-72`}>
         <main className="flex-1 max-w-3xl">
+          <button
+            onClick={() => setMobileNavOpen(true)}
+            className="lg:hidden flex items-center gap-1.5 text-sm text-ink-soft hover:text-ink mb-4"
+          >
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M15 18l-6-6 6-6" />
+            </svg>
+            All settings
+          </button>
           {!profile ? (
             <p className="text-sm text-ink-soft">Loading...</p>
           ) : section === 'profile' ? (
