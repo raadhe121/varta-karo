@@ -9,3 +9,7 @@ export const unfollowUser = (userId) => http.delete(`/follow/${userId}`).then((r
 export const fetchMutualFollows = () => http.get('/follow/mutual').then((r) => r.data);
 export const fetchFollowers = (userId) => http.get(`/follow/${userId}/followers`).then((r) => r.data);
 export const fetchFollowing = (userId) => http.get(`/follow/${userId}/following`).then((r) => r.data);
+
+export const fetchFollowRequests = () => http.get('/follow/requests').then((r) => r.data);
+export const acceptFollowRequest = (requestId) => http.post(`/follow/requests/${requestId}/accept`).then((r) => r.data);
+export const rejectFollowRequest = (requestId) => http.delete(`/follow/requests/${requestId}`).then((r) => r.data);

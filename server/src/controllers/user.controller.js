@@ -1,6 +1,6 @@
 import bcrypt from 'bcryptjs';
 import { Op } from 'sequelize';
-import { User, Follow, Block, Post, Like, Comment } from '../models/index.js';
+import { User, Follow, FollowRequest, Block, Post, Like, Comment } from '../models/index.js';
 import { canView } from '../services/visibility.service.js';
 
 function publicUser(user) {
@@ -12,12 +12,12 @@ function fullUser(user) {
   const {
     id, name, username, email, phone, avatarUrl, avatarColor, bio,
     coverPhotoUrl, work, education, location, links, profileVisibility,
-    status, lastSeenAt, passwordHash,
+    status, lastSeenAt, passwordHash, isPrivate,
   } = user;
   return {
     id, name, username, email, phone, avatarUrl, avatarColor, bio,
     coverPhotoUrl, work, education, location, links, profileVisibility,
-    status, lastSeenAt, hasPassword: Boolean(passwordHash),
+    status, lastSeenAt, hasPassword: Boolean(passwordHash), isPrivate,
   };
 }
 
@@ -33,7 +33,7 @@ export async function updateMe(req, res) {
 
   const {
     name, bio, avatarUrl, avatarColor,
-    coverPhotoUrl, work, education, location, links, profileVisibility,
+    coverPhotoUrl, work, education, location, links, profileVisibility, isPrivate,
   } = req.body;
 
   if (name !== undefined) user.name = name;
@@ -45,6 +45,7 @@ export async function updateMe(req, res) {
   if (education !== undefined) user.education = education;
   if (location !== undefined) user.location = location;
   if (links !== undefined) user.links = links;
+  if (isPrivate !== undefined) user.isPrivate = Boolean(isPrivate);
   if (profileVisibility !== undefined) {
     if (!['public', 'friends', 'only_me'].includes(profileVisibility)) {
       return res.status(400).json({ message: 'Invalid profileVisibility' });
@@ -71,6 +72,26 @@ export async function updateEmail(req, res) {
   if (!user) return res.status(404).json({ message: 'User not found' });
 
   user.email = email;
+  await user.save();
+
+  return res.json(fullUser(user));
+}
+
+export async function updateUsername(req, res) {
+  const username = String(req.body.username || '').trim();
+  if (!/^[a-zA-Z0-9_.]{3,30}$/.test(username)) {
+    return res.status(400).json({ message: 'Username must be 3-30 characters (letters, numbers, _ or .)' });
+  }
+
+  const existing = await User.findOne({ where: { username, id: { [Op.ne]: req.userId } } });
+  if (existing) {
+    return res.status(409).json({ message: 'That username is already taken' });
+  }
+
+  const user = await User.findByPk(req.userId);
+  if (!user) return res.status(404).json({ message: 'User not found' });
+
+  user.username = username;
   await user.save();
 
   return res.json(fullUser(user));
@@ -117,8 +138,23 @@ export async function searchUsers(req, res) {
     },
     limit: 20,
   });
+  if (users.length === 0) return res.json([]);
 
-  return res.json(users.map(publicUser));
+  const userIds = users.map((u) => u.id);
+  const [followingRows, followedByRows] = await Promise.all([
+    Follow.findAll({ where: { followerId: req.userId, followingId: userIds } }),
+    Follow.findAll({ where: { followerId: userIds, followingId: req.userId } }),
+  ]);
+  const followingSet = new Set(followingRows.map((f) => f.followingId));
+  const followedBySet = new Set(followedByRows.map((f) => f.followerId));
+
+  return res.json(
+    users.map((u) => ({
+      ...publicUser(u),
+      isFollowing: followingSet.has(u.id),
+      isFollowedBy: followedBySet.has(u.id),
+    }))
+  );
 }
 
 export async function getSuggestions(req, res) {
@@ -174,14 +210,16 @@ export async function getProfile(req, res) {
   const user = await User.findByPk(id);
   if (!user) return res.status(404).json({ message: 'User not found' });
 
-  const [followerCount, followingCount, following, followedBy, blocked, blockedByOwner] = await Promise.all([
-    Follow.count({ where: { followingId: id } }),
-    Follow.count({ where: { followerId: id } }),
-    Follow.findOne({ where: { followerId: req.userId, followingId: id } }),
-    Follow.findOne({ where: { followerId: id, followingId: req.userId } }),
-    req.userId === id ? null : Block.findOne({ where: { blockerId: req.userId, blockedId: id } }),
-    req.userId === id ? null : Block.findOne({ where: { blockerId: id, blockedId: req.userId } }),
-  ]);
+  const [followerCount, followingCount, following, followedBy, blocked, blockedByOwner, pendingRequest] =
+    await Promise.all([
+      Follow.count({ where: { followingId: id } }),
+      Follow.count({ where: { followerId: id } }),
+      Follow.findOne({ where: { followerId: req.userId, followingId: id } }),
+      Follow.findOne({ where: { followerId: id, followingId: req.userId } }),
+      req.userId === id ? null : Block.findOne({ where: { blockerId: req.userId, blockedId: id } }),
+      req.userId === id ? null : Block.findOne({ where: { blockerId: id, blockedId: req.userId } }),
+      req.userId === id ? null : FollowRequest.findOne({ where: { requesterId: req.userId, targetId: id } }),
+    ]);
 
   // The owner blocked the viewer — hide everything real about them, same
   // treatment as their anonymized entry in a shared conversation.
@@ -207,7 +245,10 @@ export async function getProfile(req, res) {
     });
   }
 
-  const showAbout = await canView(user.profileVisibility, req.userId, id);
+  // A private account additionally requires an accepted Follow before
+  // showing About, regardless of the (separate) profileVisibility setting.
+  const showAbout =
+    (await canView(user.profileVisibility, req.userId, id)) && (!user.isPrivate || req.userId === id || Boolean(following));
 
   return res.json({
     id: user.id,
@@ -220,8 +261,10 @@ export async function getProfile(req, res) {
     status: user.status,
     lastSeenAt: user.lastSeenAt,
     isSelf: req.userId === id,
+    isPrivate: user.isPrivate,
     isFollowing: Boolean(following),
     isFollowedBy: Boolean(followedBy),
+    hasRequestedFollow: Boolean(pendingRequest),
     isBlocked: Boolean(blocked),
     blockedByOther: false,
     followerCount,

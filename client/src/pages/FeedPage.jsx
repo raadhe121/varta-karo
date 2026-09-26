@@ -1,9 +1,16 @@
 import { useEffect, useState } from 'react';
 import { fetchFeed, fetchDiscoverPosts } from '../api/posts.api';
-import AppNav from '../components/layout/AppNav';
+import { useSocket } from '../hooks/useSocket';
+import IncomingCallModal from '../components/call/IncomingCallModal';
+import ActiveCallOverlay from '../components/call/ActiveCallOverlay';
+import HomeTopBar from '../components/layout/HomeTopBar';
+import FeedSidebar from '../components/layout/FeedSidebar';
+import MobileTabBar from '../components/layout/MobileTabBar';
 import PostCard from '../components/social/PostCard';
 import StoriesRow from '../components/social/StoriesRow';
-import SuggestionsSidebar from '../components/social/SuggestionsSidebar';
+import HomeComposerBar from '../components/social/HomeComposerBar';
+import HomeRightRail from '../components/social/HomeRightRail';
+import CreatePostModal from '../components/social/CreatePostModal';
 import Spinner from '../components/common/Spinner';
 
 // Minimum number of cards the feed tries to show. Whatever a follows-only
@@ -16,9 +23,12 @@ import Spinner from '../components/common/Spinner';
 const MIN_FEED_SIZE = 20;
 
 export default function FeedPage() {
+  useSocket();
+
   const [posts, setPosts] = useState(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   useEffect(() => {
     fetchFeed().then(async (data) => {
@@ -52,10 +62,33 @@ export default function FeedPage() {
 
   return (
     <div className="min-h-screen flex flex-col bg-page">
-      <AppNav />
-      <div className="relative px-4 py-8 lg:pr-[356px]">
-        <div className="max-w-[640px] mx-auto space-y-6">
-          <div className="rounded-xl bg-paper border border-line px-4 py-4">
+      <IncomingCallModal />
+      <ActiveCallOverlay />
+      {composerOpen && (
+        <CreatePostModal
+          onClose={() => setComposerOpen(false)}
+          onCreated={(post) => {
+            setPosts((prev) => (prev ? [post, ...prev] : prev));
+            setComposerOpen(false);
+          }}
+        />
+      )}
+
+      <HomeTopBar onCreate={() => setComposerOpen(true)} />
+
+      <FeedSidebar />
+
+      <div className="flex-1 flex justify-center gap-8 px-0 lg:pl-64 lg:pr-6 py-0 lg:py-6">
+        <main className="flex-1 max-w-[640px] space-y-0 lg:space-y-4 pb-16 lg:pb-0">
+          <div className="hidden lg:block">
+            <HomeComposerBar onOpen={() => setComposerOpen(true)} />
+          </div>
+
+          <div className="border-b border-line px-4 py-3 lg:rounded-2xl lg:bg-paper lg:border lg:p-4">
+            <div className="hidden lg:flex items-center justify-between mb-3">
+              <p className="text-sm font-semibold">Stories</p>
+              <button className="text-xs font-semibold text-accent">See all</button>
+            </div>
             <StoriesRow />
           </div>
 
@@ -84,12 +117,14 @@ export default function FeedPage() {
               )}
             </>
           )}
-        </div>
+        </main>
 
-        <div className="hidden lg:block fixed top-24 right-6 w-[320px]">
-          <SuggestionsSidebar />
+        <div className="hidden xl:block w-[320px] shrink-0">
+          <HomeRightRail />
         </div>
       </div>
+
+      <MobileTabBar onCreate={() => setComposerOpen(true)} />
     </div>
   );
 }

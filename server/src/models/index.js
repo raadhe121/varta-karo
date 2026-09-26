@@ -6,6 +6,7 @@ import { ConversationParticipant } from './ConversationParticipant.js';
 import { Message } from './Message.js';
 import { MessageStatus } from './MessageStatus.js';
 import { Follow } from './Follow.js';
+import { FollowRequest } from './FollowRequest.js';
 import { Block } from './Block.js';
 import { Post } from './Post.js';
 import { Like } from './Like.js';
@@ -52,6 +53,10 @@ MessageStatus.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 // visibility, etc. See services/visibility.service.js)
 Follow.belongsTo(User, { foreignKey: 'followerId', as: 'follower' });
 Follow.belongsTo(User, { foreignKey: 'followingId', as: 'following' });
+
+// Pending follow asks against a private account -- see FollowRequest.js.
+FollowRequest.belongsTo(User, { foreignKey: 'requesterId', as: 'requester' });
+FollowRequest.belongsTo(User, { foreignKey: 'targetId', as: 'target' });
 
 // Blocks (one-way; either side blocking the other severs the relationship —
 // see services/block.service.js)
@@ -115,6 +120,7 @@ export {
   Message,
   MessageStatus,
   Follow,
+  FollowRequest,
   Block,
   Post,
   Like,

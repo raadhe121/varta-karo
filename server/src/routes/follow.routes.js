@@ -6,6 +6,9 @@ const router = Router();
 
 router.use(requireAuth);
 router.get('/mutual', followController.listMutualFollows);
+router.get('/requests', followController.listFollowRequests);
+router.post('/requests/:requestId/accept', followController.acceptFollowRequest);
+router.delete('/requests/:requestId', followController.rejectFollowRequest);
 router.get('/:userId/followers', followController.listFollowers);
 router.get('/:userId/following', followController.listFollowing);
 router.post('/:userId', followController.follow);

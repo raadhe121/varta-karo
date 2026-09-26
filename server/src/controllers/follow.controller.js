@@ -1,5 +1,5 @@
 import { Op } from 'sequelize';
-import { Follow, User } from '../models/index.js';
+import { Follow, FollowRequest, User } from '../models/index.js';
 import { createNotification } from '../services/notification.service.js';
 
 function publicUser(user) {
@@ -7,6 +7,8 @@ function publicUser(user) {
   return { id, name, username, email, phone, avatarUrl, avatarColor, bio, status, lastSeenAt };
 }
 
+// Public accounts: follow immediately, as before. Private accounts: park a
+// FollowRequest instead -- no Follow row exists until the target accepts it.
 export async function follow(req, res) {
   const followingId = req.params.userId;
   if (followingId === req.userId) {
@@ -16,17 +18,62 @@ export async function follow(req, res) {
   const target = await User.findByPk(followingId);
   if (!target) return res.status(404).json({ message: 'User not found' });
 
-  const [row, created] = await Follow.findOrCreate({
-    where: { followerId: req.userId, followingId },
-  });
-  if (created) {
-    await createNotification({ recipientId: followingId, actorId: req.userId, type: 'follow' }, req.app.get('io'));
+  const alreadyFollowing = await Follow.findOne({ where: { followerId: req.userId, followingId } });
+  if (alreadyFollowing) {
+    return res.status(200).json({ status: 'following', follow: alreadyFollowing });
   }
-  return res.status(201).json(row);
+
+  if (target.isPrivate) {
+    const [request, created] = await FollowRequest.findOrCreate({
+      where: { requesterId: req.userId, targetId: followingId },
+    });
+    if (created) {
+      await createNotification({ recipientId: followingId, actorId: req.userId, type: 'follow_request' }, req.app.get('io'));
+    }
+    return res.status(202).json({ status: 'requested', request });
+  }
+
+  const [row] = await Follow.findOrCreate({ where: { followerId: req.userId, followingId } });
+  await createNotification({ recipientId: followingId, actorId: req.userId, type: 'follow' }, req.app.get('io'));
+  return res.status(201).json({ status: 'following', follow: row });
 }
 
 export async function unfollow(req, res) {
-  await Follow.destroy({ where: { followerId: req.userId, followingId: req.params.userId } });
+  // Also cancels a pending request -- unfollow doubles as "cancel my ask" on
+  // a private account the caller hasn't been accepted by yet.
+  await Promise.all([
+    Follow.destroy({ where: { followerId: req.userId, followingId: req.params.userId } }),
+    FollowRequest.destroy({ where: { requesterId: req.userId, targetId: req.params.userId } }),
+  ]);
+  return res.status(204).send();
+}
+
+export async function listFollowRequests(req, res) {
+  const rows = await FollowRequest.findAll({
+    where: { targetId: req.userId },
+    include: [{ model: User, as: 'requester' }],
+    order: [['createdAt', 'DESC']],
+  });
+  return res.json(rows.map((r) => ({ id: r.id, requester: publicUser(r.requester), createdAt: r.createdAt })));
+}
+
+export async function acceptFollowRequest(req, res) {
+  const request = await FollowRequest.findOne({ where: { id: req.params.requestId, targetId: req.userId } });
+  if (!request) return res.status(404).json({ message: 'Follow request not found' });
+
+  const [row] = await Follow.findOrCreate({
+    where: { followerId: request.requesterId, followingId: req.userId },
+  });
+  await request.destroy();
+  await createNotification(
+    { recipientId: request.requesterId, actorId: req.userId, type: 'follow_accept' },
+    req.app.get('io')
+  );
+  return res.json({ status: 'following', follow: row });
+}
+
+export async function rejectFollowRequest(req, res) {
+  await FollowRequest.destroy({ where: { id: req.params.requestId, targetId: req.userId } });
   return res.status(204).send();
 }
 

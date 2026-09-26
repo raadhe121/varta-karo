@@ -108,6 +108,21 @@ async function start() {
       });
     }
 
+    if (!usersTable.isPrivate) {
+      await sequelize.getQueryInterface().addColumn('users', 'isPrivate', {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+      });
+    }
+
+    // sync() creates the enum type fresh for a brand-new notifications table,
+    // but on a pre-existing one it never adds new values to an existing
+    // Postgres enum -- so the two new notification types below need a
+    // one-off ALTER TYPE. IF NOT EXISTS makes it safe to run on every boot.
+    await sequelize.query(`ALTER TYPE "enum_notifications_type" ADD VALUE IF NOT EXISTS 'follow_request'`);
+    await sequelize.query(`ALTER TYPE "enum_notifications_type" ADD VALUE IF NOT EXISTS 'follow_accept'`);
+
     console.log('Database connected and synced.');
   } catch (err) {
     console.error('Failed to connect to the database:', err.message);

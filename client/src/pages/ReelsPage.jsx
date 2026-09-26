@@ -1,16 +1,25 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import AppNav from '../components/layout/AppNav';
+import { useSocket } from '../hooks/useSocket';
+import IncomingCallModal from '../components/call/IncomingCallModal';
+import ActiveCallOverlay from '../components/call/ActiveCallOverlay';
+import HomeTopBar from '../components/layout/HomeTopBar';
+import FeedSidebar from '../components/layout/FeedSidebar';
+import MobileTabBar from '../components/layout/MobileTabBar';
+import CreatePostModal from '../components/social/CreatePostModal';
 import ReelItem from '../components/reels/ReelItem';
 import ReelCommentsPanel from '../components/reels/ReelCommentsPanel';
 import { fetchReels } from '../api/posts.api';
 
 export default function ReelsPage() {
+  useSocket();
+
   const [reels, setReels] = useState([]);
   const [loading, setLoading] = useState(true);
   const [exhausted, setExhausted] = useState(false);
   const [activeIndex, setActiveIndex] = useState(0);
   const [muted, setMuted] = useState(true);
   const [commentsFor, setCommentsFor] = useState(null);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const containerRef = useRef(null);
   const itemRefs = useRef([]);
@@ -66,6 +75,16 @@ export default function ReelsPage() {
     node?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
 
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'ArrowUp') scrollToIndex(Math.max(0, activeIndex - 1));
+      if (e.key === 'ArrowDown') scrollToIndex(Math.min(reels.length - 1, activeIndex + 1));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeIndex, reels.length]);
+
   const handleFollowChange = () => {
     // Re-fetching the whole feed just to flip one badge is overkill; the
     // FollowButton already reflects the optimistic state itself.
@@ -76,66 +95,76 @@ export default function ReelsPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-paper-dark overflow-hidden">
-      <AppNav />
+    <div className="h-screen flex flex-col bg-page overflow-hidden">
+      <IncomingCallModal />
+      <ActiveCallOverlay />
+      {composerOpen && <CreatePostModal onClose={() => setComposerOpen(false)} />}
 
-      <div className="relative flex-1 overflow-hidden">
-        {loading && reels.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">Loading reels...</div>
-        )}
-        {!loading && reels.length === 0 && (
-          <div className="absolute inset-0 flex items-center justify-center text-white/70 text-sm">No reels yet.</div>
-        )}
+      <HomeTopBar onCreate={() => setComposerOpen(true)} />
 
-        <div
-          ref={containerRef}
-          className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth"
-          style={{ scrollbarWidth: 'none' }}
-        >
-          {reels.map((reel, index) => (
-            <div
-              key={reel.id}
-              ref={(node) => (itemRefs.current[index] = node)}
-              data-index={index}
-              className="h-full w-full snap-start"
+      <FeedSidebar />
+
+      <div className="flex-1 flex min-h-0 lg:pl-64">
+        <div className="relative flex-1 min-w-0 overflow-hidden">
+          {loading && reels.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-ink-soft text-sm">Loading reels...</div>
+          )}
+          {!loading && reels.length === 0 && (
+            <div className="absolute inset-0 flex items-center justify-center text-ink-soft text-sm">No reels yet.</div>
+          )}
+
+          <div
+            ref={containerRef}
+            className="h-full w-full overflow-y-scroll snap-y snap-mandatory scroll-smooth py-6"
+            style={{ scrollbarWidth: 'none' }}
+          >
+            {reels.map((reel, index) => (
+              <div
+                key={reel.id}
+                ref={(node) => (itemRefs.current[index] = node)}
+                data-index={index}
+                className="h-full w-full snap-start"
+              >
+                <ReelItem
+                  reel={reel}
+                  isActive={index === activeIndex}
+                  muted={muted}
+                  onToggleMute={() => setMuted((m) => !m)}
+                  onOpenComments={setCommentsFor}
+                  onFollowChange={handleFollowChange}
+                />
+              </div>
+            ))}
+          </div>
+
+          <div className="hidden xl:flex absolute right-8 top-1/2 -translate-y-1/2 flex-col items-center gap-2 z-10">
+            <button
+              onClick={() => scrollToIndex(Math.max(0, activeIndex - 1))}
+              disabled={activeIndex === 0}
+              className="flex items-center gap-1.5 rounded-full bg-paper border border-line text-ink text-sm font-semibold px-4 py-2 disabled:opacity-30"
             >
-              <ReelItem
-                reel={reel}
-                isActive={index === activeIndex}
-                muted={muted}
-                onToggleMute={() => setMuted((m) => !m)}
-                onOpenComments={setCommentsFor}
-                onFollowChange={handleFollowChange}
-              />
-            </div>
-          ))}
-        </div>
-
-        <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-10">
-          <button
-            onClick={() => scrollToIndex(Math.max(0, activeIndex - 1))}
-            disabled={activeIndex === 0}
-            className="h-10 w-10 rounded-full bg-black/40 text-white flex items-center justify-center disabled:opacity-30"
-            title="Previous"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m18 15-6-6-6 6" />
-            </svg>
-          </button>
-          <button
-            onClick={() => scrollToIndex(Math.min(reels.length - 1, activeIndex + 1))}
-            disabled={activeIndex >= reels.length - 1}
-            className="h-10 w-10 rounded-full bg-black/40 text-white flex items-center justify-center disabled:opacity-30"
-            title="Next"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2">
-              <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
-            </svg>
-          </button>
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m18 15-6-6-6 6" />
+              </svg>
+              Previous reel
+            </button>
+            <button
+              onClick={() => scrollToIndex(Math.min(reels.length - 1, activeIndex + 1))}
+              disabled={activeIndex >= reels.length - 1}
+              className="flex items-center gap-1.5 rounded-full bg-accent text-white text-sm font-semibold px-4 py-2 disabled:opacity-30"
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4">
+                <path strokeLinecap="round" strokeLinejoin="round" d="m6 9 6 6 6-6" />
+              </svg>
+              Next reel
+            </button>
+            <p className="text-xs text-ink-soft mt-1">Tip: use &uarr;&darr; keys or scroll</p>
+          </div>
         </div>
       </div>
 
       <ReelCommentsPanel reel={commentsFor} onClose={() => setCommentsFor(null)} onCommentAdded={handleCommentAdded} />
+      <MobileTabBar onCreate={() => setComposerOpen(true)} />
     </div>
   );
 }

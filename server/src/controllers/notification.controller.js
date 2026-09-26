@@ -1,4 +1,4 @@
-import { Notification, User, Post } from '../models/index.js';
+import { Notification, User, Post, Follow } from '../models/index.js';
 
 function publicActor(user) {
   const { id, name, username, avatarUrl, avatarColor } = user;
@@ -16,6 +16,14 @@ export async function listNotifications(req, res) {
     limit: 50,
   });
 
+  // Lets a 'follow'/'follow_accept' notification show whether the recipient
+  // already follows that actor back, so the UI can render a Follow/Following
+  // button inline instead of just a link to their profile.
+  const actorIds = [...new Set(notifications.filter((n) => n.type === 'follow' || n.type === 'follow_accept').map((n) => n.actorId))];
+  const followingBackRows =
+    actorIds.length > 0 ? await Follow.findAll({ where: { followerId: req.userId, followingId: actorIds } }) : [];
+  const followingBackSet = new Set(followingBackRows.map((f) => f.followingId));
+
   return res.json(
     notifications.map((n) => ({
       id: n.id,
@@ -25,6 +33,7 @@ export async function listNotifications(req, res) {
       read: n.read,
       createdAt: n.createdAt,
       actor: publicActor(n.actor),
+      isFollowingBack: n.type === 'follow' || n.type === 'follow_accept' ? followingBackSet.has(n.actorId) : undefined,
     }))
   );
 }

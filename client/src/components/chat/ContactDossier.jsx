@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import Avatar from '../common/Avatar';
 import { fetchProfile } from '../../api/social.api';
 import { blockUser, unblockUser } from '../../api/block.api';
@@ -13,17 +13,40 @@ import { resolveMediaUrl } from '../../utils/media';
 const EMPTY_MESSAGES = [];
 const DISAPPEARING_ON_SECONDS = 86400; // 24h — the one duration this toggle offers
 
-function Toggle({ label, on, onToggle, disabled }) {
+function Checkbox({ label, sublabel, on, onToggle, disabled }) {
   return (
     <button
       onClick={onToggle}
       disabled={disabled}
-      className="w-full flex items-center justify-between py-2.5 text-sm text-left disabled:opacity-50"
+      className="w-full flex items-center justify-between py-2.5 text-left disabled:opacity-50"
     >
-      <span>{label}</span>
-      <span className={`h-5 w-9 rounded-full transition-colors relative ${on ? 'bg-accent' : 'bg-line'}`}>
-        <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-paper transition-transform ${on ? 'translate-x-4' : 'translate-x-0.5'}`} />
+      <span>
+        <span className="block text-sm font-semibold">{label}</span>
+        {sublabel && <span className="block text-xs text-ink-soft">{sublabel}</span>}
       </span>
+      <span
+        className={`h-5 w-5 rounded-md border-2 shrink-0 flex items-center justify-center text-[10px] ${
+          on ? 'bg-accent border-accent text-white' : 'border-line'
+        }`}
+      >
+        {on && '✓'}
+      </span>
+    </button>
+  );
+}
+
+function IconAction({ onClick, disabled, title, label, children }) {
+  return (
+    <button
+      onClick={onClick}
+      disabled={disabled}
+      title={title}
+      className={`flex-1 flex flex-col items-center gap-1.5 py-3 rounded-xl border border-line text-sm font-medium ${
+        disabled ? 'text-ink-soft opacity-50 cursor-not-allowed' : 'text-ink hover:bg-paper-soft'
+      }`}
+    >
+      {children}
+      {label}
     </button>
   );
 }
@@ -53,6 +76,7 @@ export default function ContactDossier({ conversation }) {
   const myId = useAuthStore((s) => s.user?.id);
   const messages = useChatStore((s) => s.messagesByConversation[conversation.id] || EMPTY_MESSAGES);
   const updateConversationMeta = useChatStore((s) => s.updateConversationMeta);
+  const navigate = useNavigate();
   const [profile, setProfile] = useState(null);
   const [muteLoading, setMuteLoading] = useState(false);
   const [disappearingLoading, setDisappearingLoading] = useState(false);
@@ -130,14 +154,22 @@ export default function ContactDossier({ conversation }) {
   return (
     <aside className="hidden lg:block w-80 shrink-0 border-l border-line bg-paper overflow-y-auto">
       <div className="p-5">
-        <p className="text-xs uppercase tracking-wide text-ink-soft mb-4">Contact Dossier</p>
-
         <div className="flex flex-col items-center text-center">
           <Avatar user={other} size="lg" />
           <Link to={`/profile/${other.id}`} className="font-display text-lg font-semibold mt-3 hover:underline">
             {other.name}
           </Link>
-          <p className="text-sm text-ink-soft">@{other.username}</p>
+          <p className="text-sm text-ink-soft mt-0.5">
+            @{other.username}
+            {profile && (
+              <>
+                {' '}
+                &middot; <strong className="text-ink">{profile.followerCount}</strong> follower
+                {profile.followerCount === 1 ? '' : 's'} &middot; <strong className="text-ink">{profile.followingCount}</strong>{' '}
+                following
+              </>
+            )}
+          </p>
           {other.bio && <p className="text-sm mt-2">{other.bio}</p>}
         </div>
 
@@ -152,40 +184,36 @@ export default function ContactDossier({ conversation }) {
           </div>
         )}
 
-        <div className="flex gap-2 mt-4">
-          <button
-            onClick={() => call('audio')}
-            disabled={!canCall}
-            title={canCall ? 'Start a voice call' : conversation.messagingDisabled ? 'Unavailable' : 'Already in a call'}
-            className={`flex-1 py-2 rounded-xl border border-line text-sm font-medium ${canCall ? 'text-ink hover:bg-paper-soft' : 'text-ink-soft opacity-50 cursor-not-allowed'}`}
-          >
-            📞 Audio
-          </button>
-          <button
-            onClick={() => call('video')}
-            disabled={!canCall}
-            title={canCall ? 'Start a video call' : conversation.messagingDisabled ? 'Unavailable' : 'Already in a call'}
-            className={`flex-1 py-2 rounded-xl border border-line text-sm font-medium ${canCall ? 'text-ink hover:bg-paper-soft' : 'text-ink-soft opacity-50 cursor-not-allowed'}`}
-          >
-            🎥 Video
-          </button>
+        <div className="flex gap-2 mt-5">
+          <IconAction onClick={() => call('audio')} disabled={!canCall} title={canCall ? 'Start a voice call' : 'Unavailable'} label="Audio">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M4 12c0-4.4 3.6-8 8-8s8 3.6 8 8-3.6 8-8 8c-1.1 0-2.2-.2-3.1-.6L4 20l1.1-4.4C4.4 14.5 4 13.3 4 12Z"
+              />
+            </svg>
+          </IconAction>
+          <IconAction onClick={() => call('video')} disabled={!canCall} title={canCall ? 'Start a video call' : 'Unavailable'} label="Video">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <rect x="2" y="6" width="14" height="12" rx="2" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="m16 10 6-3.5v11L16 14" />
+            </svg>
+          </IconAction>
+          <IconAction onClick={() => navigate(`/profile/${other.id}`)} label="Profile">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="8" r="3.5" />
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 20c0-3.9 3.1-7 7-7s7 3.1 7 7" />
+            </svg>
+          </IconAction>
         </div>
 
-        {profile && (
-          <div className="flex gap-4 justify-center text-sm text-ink-soft mt-4">
-            <span>
-              <strong className="text-ink">{profile.followerCount}</strong> followers
-            </span>
-            <span>
-              <strong className="text-ink">{profile.followingCount}</strong> following
-            </span>
-          </div>
-        )}
-
         <div className="mt-5 pt-4 border-t border-line">
-          <p className="text-xs uppercase tracking-wide text-ink-soft mb-2">Shared photos ({sharedImages.length})</p>
+          <p className="text-sm font-semibold mb-2">Shared media</p>
           {sharedImages.length === 0 ? (
-            <p className="text-sm text-ink-soft">No photos shared yet.</p>
+            <div className="rounded-xl border-2 border-dashed border-line p-4 text-center">
+              <p className="text-xs text-ink-soft">Photos and videos you share will appear here</p>
+            </div>
           ) : (
             <div className="grid grid-cols-3 gap-1.5">
               {sharedImages.slice(-9).map((m) => (
@@ -195,23 +223,36 @@ export default function ContactDossier({ conversation }) {
           )}
         </div>
 
-        <div className="mt-2 pt-2 border-t border-line divide-y divide-line">
-          <Toggle
-            label="Disappearing messages (24h)"
+        <div className="mt-3 pt-2 border-t border-line divide-y divide-line">
+          <Checkbox
+            label="Disappearing messages"
+            sublabel="Messages vanish after 24 hours"
             on={Boolean(conversation.disappearingSeconds)}
             onToggle={toggleDisappearing}
             disabled={disappearingLoading}
           />
-          <Toggle label="Mute notifications" on={Boolean(conversation.muted)} onToggle={toggleMute} disabled={muteLoading} />
+          <Checkbox label="Mute notifications" on={Boolean(conversation.muted)} onToggle={toggleMute} disabled={muteLoading} />
         </div>
 
-        <button
-          onClick={toggleBlock}
-          disabled={blockLoading}
-          className="mt-3 text-sm text-red-600 hover:underline disabled:opacity-50"
-        >
-          {iBlocked ? `Unblock ${other.name}` : `Block ${other.name}`}
-        </button>
+        <div className="mt-3 pt-3 border-t border-line space-y-3">
+          <button disabled title="Coming soon" className="flex items-center gap-2 text-sm font-medium text-ink-soft opacity-60 cursor-not-allowed">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M5 3v18M5 4h11l-2 4 2 4H5" />
+            </svg>
+            Report
+          </button>
+          <button
+            onClick={toggleBlock}
+            disabled={blockLoading}
+            className="flex items-center gap-2 text-sm font-medium text-red-600 hover:underline disabled:opacity-50"
+          >
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <circle cx="12" cy="12" r="9" />
+              <path strokeLinecap="round" d="m5.5 5.5 13 13" />
+            </svg>
+            {iBlocked ? `Unblock ${other.name}` : `Block ${other.name}`}
+          </button>
+        </div>
       </div>
     </aside>
   );

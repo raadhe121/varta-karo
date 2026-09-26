@@ -2,16 +2,26 @@ import { useState } from 'react';
 import Button from '../common/Button';
 import * as socialApi from '../../api/social.api';
 
+function initialStatus(profile) {
+  if (profile.isFollowing) return 'following';
+  if (profile.hasRequestedFollow) return 'requested';
+  return 'none';
+}
+
 export default function FollowButton({ profile, onChange }) {
+  const [status, setStatus] = useState(() => initialStatus(profile));
   const [loading, setLoading] = useState(false);
 
   const toggle = async () => {
     setLoading(true);
     try {
-      if (profile.isFollowing) {
-        await socialApi.unfollowUser(profile.id);
+      if (status === 'none') {
+        const res = await socialApi.followUser(profile.id);
+        setStatus(res.status === 'requested' ? 'requested' : 'following');
       } else {
-        await socialApi.followUser(profile.id);
+        // Unfollowing and cancelling a pending request are the same call.
+        await socialApi.unfollowUser(profile.id);
+        setStatus('none');
       }
       onChange?.();
     } finally {
@@ -19,9 +29,11 @@ export default function FollowButton({ profile, onChange }) {
     }
   };
 
+  const label = status === 'following' ? 'Following' : status === 'requested' ? 'Requested' : 'Follow';
+
   return (
-    <Button variant={profile.isFollowing ? 'outline' : 'primary'} className="text-sm" disabled={loading} onClick={toggle}>
-      {profile.isFollowing ? 'Following' : 'Follow'}
+    <Button variant={status === 'none' ? 'primary' : 'outline'} className="text-sm" disabled={loading} onClick={toggle}>
+      {label}
     </Button>
   );
 }

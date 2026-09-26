@@ -52,14 +52,14 @@ export default function StoriesRow() {
         onClick={handleAvatarClick}
         disabled={uploading}
         title={myGroup ? 'View your story' : 'Add to your story'}
-        className="flex flex-col items-center gap-1.5 shrink-0 w-16"
+        className="flex flex-col items-center gap-1.5 shrink-0 w-16 outline-none"
       >
         <div className="relative">
           <div
             className="rounded-full"
             style={
               myGroup
-                ? { padding: 2, background: 'linear-gradient(135deg, #f6a93b, #c1652f)' }
+                ? { padding: 2, background: 'var(--gradient-accent)' }
                 : undefined
             }
           >
@@ -92,14 +92,14 @@ export default function StoriesRow() {
             <button
               key={g.author.id}
               onClick={() => setViewerGroupIndex(groups.findIndex((gr) => gr.author.id === g.author.id))}
-              className="flex flex-col items-center gap-1.5 shrink-0 w-16"
+              className="flex flex-col items-center gap-1.5 shrink-0 w-16 outline-none"
             >
               <div
                 className="rounded-full"
                 style={
                   allSeen
                     ? { padding: 2, border: '2px solid var(--color-line)' }
-                    : { padding: 2, background: 'linear-gradient(135deg, #f6a93b, #c1652f)' }
+                    : { padding: 2, background: 'var(--gradient-accent)' }
                 }
               >
                 <div className="p-[2px] rounded-full bg-paper">

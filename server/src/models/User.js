@@ -77,6 +77,14 @@ export const User = sequelize.define(
       allowNull: false,
       defaultValue: 'public',
     },
+    // Gates the Follow flow, not profile visibility above (that's just the
+    // About section). A private account requires the target to approve a
+    // FollowRequest before a Follow row is created.
+    isPrivate: {
+      type: DataTypes.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
     status: {
       type: DataTypes.ENUM('online', 'offline'),
       allowNull: false,
